@@ -1,0 +1,62 @@
+{
+  "name": "dsh-balance-display",
+  "version": "2.0.0",
+  "description": "Sidebar card that shows the wallet balance and Token Plan usage of every model provider enabled in DSH, and hides the rest.",
+  "type": "module",
+  "license": "MIT",
+  "icon": "./icon.svg",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "balance",
+    "token-plan",
+    "sidebar"
+  ],
+  "engines": {
+    "dsh": ">=0.2.0-rc.2",
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-balance-qwen-cookie": "./tools/qwen-cookie.mjs"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "tools/*.mjs",
+    "tools/lib/*.mjs",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "docs/*.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --test \"test/*.test.js\"",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

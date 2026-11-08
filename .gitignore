@@ -1,0 +1,16 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Dependencies
+node_modules/
+
+# Local plugin data: today's baseline and the scraped schedules of THIS machine.
+*.log
+*.local.json
+.dsh-balance-display/
+
+# Never commit a real credential or an npm tarball by accident.
+.credentials.yaml
+*.tgz

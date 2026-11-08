@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "title": "Balance display",
+    "description": "Shows the balance and Token Plan usage of every model provider enabled in this DSH profile, under the sidebar, and hides the providers you are not using."
+  },
+  "card": {
+    "planTitle": "Token plan",
+    "balanceTitle": "Balances",
+    "thirdTitle": "Third-party",
+    "thirdEmpty": "No third-party channel detected",
+    "empty": "No model provider is enabled",
+    "loading": "Loading balances…",
+    "refreshErr": "Refresh failed: ",
+    "updated": "Updated",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "setup": "Set up"
+  },
+  "row": {
+    "noKey": "No key",
+    "unset": "Not set",
+    "expired": "Signed out",
+    "failed": "Failed",
+    "days": "{n}d left",
+    "today": "used today",
+    "todayPlan": "used today",
+    "peak": "Peak",
+    "offPeak": "Off-peak",
+    "peakTip": "Peak hours ({windows}) — off-peak is half price",
+    "offPeakTip": "Off-peak right now",
+    "night": "Night {discount}× off",
+    "setupTip": "Click to add {label}",
+    "reload": "Reload"
+  },
+  "setup": {
+    "title": "Balance display · Setup",
+    "subtitle": "Keys and cookies are stored in the local DSH credential store — never in the plugin config or the logs.",
+    "back": "Back",
+    "open": "Open console",
+    "paste": "Value",
+    "save": "Save and test",
+    "clear": "Clear",
+    "stored": "Configured",
+    "missing": "Not configured",
+    "testing": "Checking…",
+    "saved": "Saved",
+    "cleared": "Cleared",
+    "forceSave": "Save anyway",
+    "howToCookie": "Sign in to the console → DevTools → Network → any request → copy the whole `Cookie` request header.",
+    "howToKey": "Create an API key in the console and paste it here.",
+    "cookiePlaceholder": "name=value; name2=value2",
+    "keyPlaceholder": "Paste the API key",
+    "neverShown": "Stored values are never echoed back.",
+    "fold": "Close",
+    "handoff": "Opened Settings → Plugins → Balance display — paste it into the form there."
+  }
+}
