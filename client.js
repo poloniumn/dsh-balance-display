@@ -3,8 +3,9 @@
  *
  * Registers a card in `sidebar.footer.action` (under the sidebar, beside the
  * shipped buttons). The card has three collapsible sections — Token Plan,
- * account balances and third-party channels — and a setup view for the
- * credentials a provider needs (API keys and console cookies).
+ * account balances and third-party channels — all folded on first load.
+ * Credential setup lives in Settings → Plugins → 余额显示, so the card shows
+ * no settings button; rows missing a key remain clickable as a fallback.
  *
  * Every visible string comes from the catalogs below (registered through the
  * DSH locale service); every per-vendor special case comes from the host row
@@ -31,6 +32,11 @@ window.__ModuleLoader__.load({
     const LOW_THRESHOLD = 1
     const SETUP_PENDING_KEY = 'dsh-balance-display:pending-setup'
     const STORAGE_KEY = 'dsh-balance-display:collapsed'
+    // Credentials are managed in Settings → Plugins → 余额显示, so the card
+    // itself is a read-only display: no gear in the header and none on rows.
+    // Flip this to true only on hosts that have no settings dialog. Rows that
+    // are missing a key stay clickable either way (see BalanceRow).
+    const SHOW_SETUP_GEAR = false
 
     // ---------- locale ----------
     const zh = {
@@ -45,6 +51,8 @@ window.__ModuleLoader__.load({
       'card.expandTitle': '展开',
       'card.collapseTitle': '收起',
       'card.setup': '配置密钥',
+      'settings.tabTitle': '余额显示',
+      'card.emptyHelp': '在 DSH 后台启用模型服务商，或先在这里填入密钥。',
       'row.noKey': '未配置密钥',
       'row.expired': '登录已过期',
       'row.failed': '获取失败',
@@ -70,6 +78,11 @@ window.__ModuleLoader__.load({
       'setup.forceSave': '仍然保存',
       'setup.fold': '收起',
       'setup.handoff': '已打开「设置 → 插件 → 余额显示」，请在那里的表单中粘贴。',
+      'setup.close': '关闭',
+      'setup.showAll': '显示全部服务商（{n}）',
+      'setup.onlyEnabled': '只显示已启用',
+      'setup.scopeHint': '默认只列出 DSH 后台已启用的服务商，以及已保存密钥的服务商。',
+      'setup.disabledTag': '未启用',
       'setup.howToCookie': '打开控制台并登录 → 开发者工具 → 网络 → 任意请求 → 复制请求头中整行的 Cookie 值。Cookie 约 7 天过期，过期后重新复制即可。',
       'setup.howToKey': '在控制台创建 API Key 后粘贴到这里。',
       'setup.cookiePlaceholder': 'name=value; name2=value2',
@@ -88,6 +101,8 @@ window.__ModuleLoader__.load({
       'card.expandTitle': 'Expand',
       'card.collapseTitle': 'Collapse',
       'card.setup': 'Configure key',
+      'settings.tabTitle': 'Balance display',
+      'card.emptyHelp': 'Enable a model provider in DSH, or add a key here first.',
       'row.noKey': 'No key',
       'row.expired': 'Signed out',
       'row.failed': 'Failed',
@@ -113,6 +128,11 @@ window.__ModuleLoader__.load({
       'setup.forceSave': 'Save anyway',
       'setup.fold': 'Close',
       'setup.handoff': 'Opened Settings → Plugins → Balance display — paste it into the form there.',
+      'setup.close': 'Close',
+      'setup.showAll': 'Show all vendors ({n})',
+      'setup.onlyEnabled': 'Only enabled',
+      'setup.scopeHint': 'By default only vendors enabled in DSH, plus ones with a saved key, are listed.',
+      'setup.disabledTag': 'Not enabled',
       'setup.howToCookie': 'Sign in to the console → DevTools → Network → any request → copy the whole `Cookie` request header. It expires after about a week; copy it again when the row says signed out.',
       'setup.howToKey': 'Create an API key in the console and paste it here.',
       'setup.cookiePlaceholder': 'name=value; name2=value2',
@@ -232,6 +252,37 @@ window.__ModuleLoader__.load({
       return (schedule.windows || []).some((win) => inWindow(minutes, win.startMinute, win.endMinute))
     }
 
+    /**
+     * Fixed-position cards do not inherit the sidebar's width. Derive every
+     * number from the measured sidebar column so dragging the sidebar
+     * narrower/wider resizes the card with it — a hard-coded 268px card used
+     * to stick out past the sidebar border.
+     *
+     * `column` is the sidebar shell rect, `marker` the anchor rect inside the
+     * footer slot. `footerTop` is optional and only trusted when it actually
+     * sits above the marker (a mis-detected ancestor with top = 0 used to push
+     * the whole card off screen).
+     */
+    function cardGeometry({ column, marker, viewportWidth, viewportHeight, footerTop, wide }) {
+      const inset = 10
+      const shell = column && Number.isFinite(column.width) && column.width > 0
+        ? column
+        : { left: marker.left, width: Math.min(260, Math.max(160, viewportWidth * 0.25)) }
+      const width = Math.round(shell.width - inset * 2)
+      // An icon-only rail has no usable room: hide instead of overflowing it.
+      if (width < 150) return { hidden: true }
+      const left = Math.max(8, Math.round(shell.left + inset))
+      const reference = Number.isFinite(footerTop) && footerTop > 0 && footerTop < marker.top
+        ? footerTop
+        : marker.top
+      const wanted = Math.round(viewportHeight - reference + 6)
+      return {
+        left,
+        width: Math.max(150, Math.min(wide ? 460 : 320, width, viewportWidth - left - 8)),
+        bottom: Math.max(8, Math.min(wanted, Math.round(viewportHeight * 0.35))),
+      }
+    }
+
     // ---------- styles (DSH design tokens) ----------
     const S = {
       wrap: {
@@ -241,7 +292,10 @@ window.__ModuleLoader__.load({
         flexDirection: 'column',
         gap: '8px',
         overflowY: 'auto',
-        maxHeight: 'calc(100vh - 120px)',
+        overflowX: 'hidden',
+        maxHeight: 'min(60vh, 480px)',
+        boxSizing: 'border-box',
+        maxWidth: '100%',
         pointerEvents: 'auto',
       },
       box: {
@@ -443,6 +497,40 @@ window.__ModuleLoader__.load({
         marginTop: '3px',
         lineHeight: 1.45,
       },
+      // The setup form owns its own scroll area: the header (with the close
+      // button) must never scroll out of reach, no matter how many vendors
+      // are listed. Without this, two dozen expanded forms push the host's
+      // settings dialog off screen.
+      setupView: {
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: 'min(70vh, 520px)',
+        minHeight: 0,
+      },
+      setupHeader: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '8px',
+        flex: '0 0 auto',
+        paddingBottom: '2px',
+      },
+      setupScroll: {
+        flex: '1 1 auto',
+        minHeight: 0,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        paddingRight: '4px',
+        boxSizing: 'border-box',
+      },
+      disabledTag: {
+        fontSize: '10px',
+        color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))',
+        border: '1px solid var(--dsw-alias-border-l1, rgba(255,255,255,0.12))',
+        borderRadius: '4px',
+        padding: '0 4px',
+        flex: '0 0 auto',
+      },
     }
 
     function fillStyle(pct) {
@@ -460,6 +548,21 @@ window.__ModuleLoader__.load({
         label ? h('span', { style: S.windowLabel, title }, label) : null,
         h('div', { style: S.bar }, h('div', { style: fillStyle(pct) })),
         h('span', { style: S.barPct }, pctText(pct)))
+    }
+
+    /**
+     * Upstream adapters may return one or two short facts that are neither a
+     * balance nor a window (wallet on the side, plan tier, expiry, debt).
+     * They ride along as `notes` instead of being silently dropped.
+     */
+    function RowNotes(props) {
+      const notes = Array.isArray(props.notes)
+        ? props.notes.filter((note) => typeof note === 'string' && note.trim())
+        : []
+      if (!notes.length) return null
+      return h('div', {
+        style: { ...S.muted, fontSize: '11px', display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '2px 0 4px' },
+      }, notes.map((note, index) => h('span', { key: `note-${index}` }, note)))
     }
 
     // ---------- one plan row ----------
@@ -500,6 +603,7 @@ window.__ModuleLoader__.load({
       } else if (row.status === 'ok') {
         children.push(h(Bar, { key: 'win', pct: Number.isFinite(row.remainPct) ? row.remainPct : null }))
       }
+      children.push(RowNotes({ notes: row.notes }))
 
       // Night-discount pills, shown only inside the window the host reports.
       if (inNightWindow(now, row.nightWindow) && Array.isArray(row.nightBadges) && row.nightBadges.length) {
@@ -554,37 +658,39 @@ window.__ModuleLoader__.load({
       const setupTip = t('row.setupTip', { label: row.keyRef || row.label })
       // A row that needs a credential invites a click anywhere on its left side.
       const openSetup = showSetup ? { role: 'button', tabIndex: 0, style: { ...S.left, cursor: 'pointer' }, title: setupTip, onClick: () => onSetup(row.keyRef), onKeyDown: (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSetup(row.keyRef) } } } : { style: S.left }
-      return h('div', { style: S.row },
-        h('span', openSetup,
-          h('a', {
-            href: row.consoleUrl || undefined,
-            target: '_blank',
-            rel: 'noreferrer noopener',
-            style: S.name,
-            title: row.consoleUrl || row.label,
-          }, row.label),
-          peak === null
-            ? null
-            : h('span', {
-              style: {
-                ...S.dot,
-                background: peak
-                  ? 'var(--dsw-alias-state-error-primary, #dc4446)'
-                  : 'var(--dsw-alias-state-success-primary, #49aa19)',
-              },
-              title: peak
-                ? t('row.peakTip', { windows: peakWindowsText(row.peakSchedule) })
-                : t('row.offPeakTip'),
-            })),
-        h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '6px' } },
-          Number.isFinite(row.todayDelta) && row.todayDelta > 0
-            ? h('span', { style: S.delta, title: `${t('row.today')} ${money(row.todayDelta, row.currency)}` },
-              `-${money(row.todayDelta, row.currency)}`)
-            : null,
-          showSetup
-            ? h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => onSetup(row.keyRef) }, '⚙')
-            : null,
-          valueEl))
+      return h('div', null,
+        h('div', { style: S.row },
+          h('span', openSetup,
+            h('a', {
+              href: row.consoleUrl || undefined,
+              target: '_blank',
+              rel: 'noreferrer noopener',
+              style: S.name,
+              title: row.consoleUrl || row.label,
+            }, row.label),
+            peak === null
+              ? null
+              : h('span', {
+                style: {
+                  ...S.dot,
+                  background: peak
+                    ? 'var(--dsw-alias-state-error-primary, #dc4446)'
+                    : 'var(--dsw-alias-state-success-primary, #49aa19)',
+                },
+                title: peak
+                  ? t('row.peakTip', { windows: peakWindowsText(row.peakSchedule) })
+                  : t('row.offPeakTip'),
+              })),
+          h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '6px' } },
+            Number.isFinite(row.todayDelta) && row.todayDelta > 0
+              ? h('span', { style: S.delta, title: `${t('row.today')} ${money(row.todayDelta, row.currency)}` },
+                `-${money(row.todayDelta, row.currency)}`)
+              : null,
+            showSetup && SHOW_SETUP_GEAR
+              ? h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => onSetup(row.keyRef) }, '⚙')
+              : null,
+            valueEl)),
+        RowNotes({ notes: row.notes }))
     }
 
     // ---------- collapsible box ----------
@@ -650,13 +756,15 @@ window.__ModuleLoader__.load({
     }
 
     function SetupView(props) {
-      const { t, entries, onBack, focusRef } = props
+      const { t, entries, onBack, focusRef, showAll, onToggleShowAll, total, backLabel } = props
       const [values, setValues] = React.useState({})
       const [busy, setBusy] = React.useState({})
       const [results, setResults] = React.useState({})
       const [focus, setFocus] = React.useState(focusRef || null)
 
-      // Only the requested provider is expanded; the rest stay behind a row.
+      // At most ONE form is ever open. With the vendor catalogue at two dozen
+      // entries, rendering every form at once made the settings dialog taller
+      // than the window and put its close button out of reach.
       React.useEffect(() => { setFocus(focusRef || null) }, [focusRef])
 
       const post = React.useCallback(async (id, payload) => {
@@ -689,22 +797,25 @@ window.__ModuleLoader__.load({
         setResults((prev) => ({ ...prev, [entry.ref]: body.ok ? { ok: true, cleared: true } : body }))
       }, [post])
 
-      return h(React.Fragment, null,
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' } },
-          h('span', { style: S.title }, t('setup.title')),
-          h('button', { type: 'button', style: S.button, onClick: onBack }, t('setup.back'))),
-        h('div', { style: S.mutedSmall }, t('setup.subtitle')),
-        entries.length === 0 ? h('div', { style: S.mutedSmall }, t('card.empty')) : null,
-        entries.map((entry, index) => h('div', { key: entry.id },
+      const list = entries.map((entry, index) => {
+        const compact = h('div', { style: S.row, key: `row-${entry.id}` },
+          h('span', { style: S.left },
+            h('span', {
+              style: { ...S.name, cursor: 'pointer' },
+              title: t('row.setupTip', { label: entry.label }),
+              onClick: () => setFocus(entry.ref),
+            }, entry.label),
+            entry.enabled === false ? h('span', { style: S.disabledTag }, t('setup.disabledTag')) : null,
+            h('span', { style: { ...S.muted, fontSize: '10px' } }, entry.ref)),
+          h('span', {
+            style: { ...(entry.set ? S.ok : S.muted), marginTop: 0, cursor: 'pointer' },
+            onClick: () => setFocus(entry.ref),
+          }, entry.set ? t('setup.stored') : t('setup.missing')))
+
+        return h('div', { key: entry.id },
           index > 0 ? h('div', { style: S.sep }) : null,
-          focus && focus !== entry.ref
-            ? h('div', { style: S.row },
-              h('span', { style: S.left },
-                h('span', { style: { ...S.name, cursor: 'pointer' }, onClick: () => setFocus(entry.ref) }, entry.label),
-                h('span', { style: { ...S.muted, fontSize: '10px' } }, entry.ref)),
-              h('span', { style: entry.set ? S.ok : S.muted, cursor: 'pointer', onClick: () => setFocus(entry.ref) },
-                entry.set ? t('setup.stored') : t('setup.missing')))
-            : h(SecretForm, {
+          focus === entry.ref
+            ? h(SecretForm, {
               entry,
               t,
               value: values[entry.ref] || '',
@@ -714,18 +825,65 @@ window.__ModuleLoader__.load({
               onSave: () => save(entry, false),
               onForce: () => save(entry, true),
               onClear: () => clear(entry),
-              onClose: focus ? () => setFocus(null) : null,
-            }))))
+              onClose: () => setFocus(null),
+            })
+            : compact)
+      })
+
+      // Header stays outside the scroll area: the close/back button is always
+      // visible even when every vendor in the catalogue is listed.
+      return h('div', { style: S.setupView },
+        h('div', { style: S.setupHeader },
+          h('span', { style: S.title }, t('setup.title')),
+          h('button', { type: 'button', style: S.button, onClick: onBack }, backLabel || t('setup.back'))),
+        h('div', { style: S.setupScroll },
+          h('div', { style: S.mutedSmall }, t('setup.subtitle')),
+          h('div', { style: S.mutedSmall }, t('setup.scopeHint')),
+          onToggleShowAll
+            ? h('div', { style: { marginTop: '5px' } },
+              h('button', { type: 'button', style: S.button, onClick: onToggleShowAll },
+                showAll ? t('setup.onlyEnabled') : t('setup.showAll', { n: total || 0 })))
+            : null,
+          entries.length === 0
+            ? h('div', { style: { ...S.mutedSmall, marginTop: '8px' } }, t('card.empty'))
+            : null,
+          list))
     }
 
     // ---------- the card ----------
+    const SECTION_KEYS = ['plan', 'balance', 'third']
+
+    /**
+     * Collapsed state is sparse in older builds: only keys the user actually
+     * touched were stored. A missing key means "collapsed", which is also the
+     * initial state — the card starts as three compact headers.
+     */
+    function normalizeCollapsed(parsed) {
+      const state = {}
+      for (const key of SECTION_KEYS) {
+        state[key] = parsed && typeof parsed === 'object' && key in parsed
+          ? parsed[key] === true
+          : true
+      }
+      return state
+    }
+
     function readCollapsed() {
       try {
-        const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null')
-        return parsed && typeof parsed === 'object' ? parsed : {}
+        return normalizeCollapsed(JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null'))
       } catch {
-        return {}
+        return normalizeCollapsed(null)
       }
+    }
+
+    /**
+     * Pure: folding one section never touches the other two. All three folded
+     * is a valid state. The old "never let the last visible section disappear"
+     * reset was the bug where clicking the third header reopened everything.
+     */
+    function toggleCollapsed(prev, key) {
+      const current = normalizeCollapsed(prev)
+      return { ...current, [key]: !current[key] }
     }
 
     function BalanceWidget(props) {
@@ -739,6 +897,8 @@ window.__ModuleLoader__.load({
       const [tick, setTick] = React.useState(0)
       const [collapsed, setCollapsed] = React.useState(readCollapsed)
       const [setup, setSetup] = React.useState(null) // null | { entries, focusRef }
+      const [showAll, setShowAll] = React.useState(false)
+      const [setupTotal, setSetupTotal] = React.useState(0)
       const markerRef = React.useRef(null)
 
       const load = React.useCallback(async () => {
@@ -754,14 +914,17 @@ window.__ModuleLoader__.load({
         }
       }, [])
 
-      const fetchSetup = React.useCallback(async () => {
+      const fetchSetup = React.useCallback(async (includeAll) => {
         try {
-          const response = await fetch(SETUP_ENDPOINT, { cache: 'no-store' })
-          if (!response.ok) return []
+          const response = await fetch(`${SETUP_ENDPOINT}${includeAll ? '?all=1' : ''}`, { cache: 'no-store' })
+          if (!response.ok) return { entries: [], total: 0 }
           const payload = await response.json()
-          return payload && Array.isArray(payload.entries) ? payload.entries : []
+          return {
+            entries: payload && Array.isArray(payload.entries) ? payload.entries : [],
+            total: Number(payload && payload.total) || 0,
+          }
         } catch {
-          return []
+          return { entries: [], total: 0 }
         }
       }, [])
 
@@ -777,7 +940,7 @@ window.__ModuleLoader__.load({
 
       const toggle = React.useCallback((key) => {
         setCollapsed((prev) => {
-          const next = { ...prev, [key]: !prev[key] }
+          const next = toggleCollapsed(prev, key)
           try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* private mode */ }
           return next
         })
@@ -789,10 +952,20 @@ window.__ModuleLoader__.load({
       // out of reach the card falls back to its own compact form.
       const openSetup = React.useCallback(async (focusRef) => {
         if (await requestSetupTab(focusRef)) { setHandoff(true); return }
+        setShowAll(false)
         setSetup({ entries: null, focusRef: focusRef || null })
-        const entries = await fetchSetup()
-        setSetup({ entries, focusRef: focusRef || null })
+        const result = await fetchSetup(false)
+        setSetupTotal(result.total)
+        setSetup({ entries: result.entries, focusRef: focusRef || null })
       }, [fetchSetup])
+
+      const toggleSetupScope = React.useCallback(async () => {
+        const next = !showAll
+        setShowAll(next)
+        const result = await fetchSetup(next)
+        setSetupTotal(result.total)
+        setSetup((prev) => (prev ? { ...prev, entries: result.entries, focusRef: null } : prev))
+      }, [showAll, fetchSetup])
 
       React.useEffect(() => {
         if (!handoff) return undefined
@@ -805,38 +978,73 @@ window.__ModuleLoader__.load({
         load()
       }, [load])
 
-      // Anchor the fixed card above the whole footer action row so it never
-      // covers the shipped sidebar buttons beside it.
+      // The card is fixed above the footer, so it cannot inherit the
+      // sidebar's width. Measure the sidebar shell and re-measure whenever it
+      // is dragged narrower/wider (ResizeObserver), the window resizes, or the
+      // sidebar collapses. A fixed 268px width used to stick out ~13px past
+      // the sidebar border.
       React.useEffect(() => {
+        let lastColumnNode = null
         const measure = () => {
           const node = markerRef.current
           if (!node || typeof node.getBoundingClientRect !== 'function') return
           const rect = node.getBoundingClientRect()
           if (!rect || !Number.isFinite(rect.top)) return
           let column = null
+          let columnNode = null
           let footArea = null
           let parent = node.parentElement
-          for (let depth = 0; parent && depth < 12; depth += 1) {
+          for (let depth = 0; parent && depth < 14; depth += 1) {
             const box = parent.getBoundingClientRect()
-            if (box && box.width >= 180 && box.width <= 460 && box.left < 80) column = box
+            // Outermost sidebar-like ancestor owns the resize handle.
+            if (box && box.width >= 150 && box.width <= 520 && box.left < 80
+              && (!column || box.width > column.width)) {
+              column = box
+              columnNode = parent
+            }
             if (/footArea|footer/i.test(String(parent.className || '')) && box) footArea = box
             parent = parent.parentElement
           }
-          const left = Math.max(8, Math.round(column ? column.left : rect.left))
-          const topReference = footArea && footArea.top ? footArea.top : rect.top
-          const available = Math.max(180, Math.round(window.innerWidth - left - 12))
-          setAnchor({
-            left,
-            bottom: Math.max(8, Math.round(window.innerHeight - topReference + 6)),
-            width: Math.min(wide ? 268 : 244, available),
+          lastColumnNode = columnNode
+          const next = cardGeometry({
+            column,
+            marker: rect,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            footerTop: footArea ? footArea.top : NaN,
+            wide,
+          })
+          // Avoid a state update (and a re-render) on every observer tick.
+          setAnchor((prev) => {
+            if (prev && prev.hidden === next.hidden && prev.left === next.left
+              && prev.width === next.width && prev.bottom === next.bottom) return prev
+            return next
           })
         }
+
         measure()
         window.addEventListener('resize', measure)
         window.addEventListener('scroll', measure, true)
+        const observers = []
+        if (typeof window.ResizeObserver === 'function') {
+          const targets = [lastColumnNode, document.body].filter(Boolean)
+          for (const target of new Set(targets)) {
+            try {
+              const observer = new window.ResizeObserver(measure)
+              observer.observe(target)
+              observers.push(observer)
+            } catch { /* older hosts */ }
+          }
+        }
+        // Safety net if the sidebar node is replaced by a React re-render.
+        const poll = setInterval(measure, 1000)
         return () => {
+          clearInterval(poll)
           window.removeEventListener('resize', measure)
           window.removeEventListener('scroll', measure, true)
+          for (const observer of observers) {
+            try { observer.disconnect() } catch { /* already gone */ }
+          }
         }
       }, [wide])
 
@@ -847,7 +1055,10 @@ window.__ModuleLoader__.load({
       const now = new Date()
       const stamp = data && data.updatedAt ? `${t('card.updated')} ${clock(data.updatedAt)}` : null
 
-      const section = (key, title, extra) => h(Section, {
+      // The fourth argument is the section body. It used to be silently
+      // dropped, leaving three collapsed-looking headers with empty boxes
+      // below them even though state.json had returned every row.
+      const section = (key, title, extra, children) => h(Section, {
         key,
         id: key,
         title,
@@ -855,12 +1066,21 @@ window.__ModuleLoader__.load({
         collapsed: Boolean(collapsed[key]),
         onToggle: () => toggle(key),
         right: extra,
-      })
+      }, children)
 
       const cards = []
       if (setup) {
         cards.push(h('div', { key: 'setup', style: S.box },
-          setup.entries ? h(SetupView, { t, entries: setup.entries, onBack: closeSetup })
+          setup.entries
+            ? h(SetupView, {
+              t,
+              entries: setup.entries,
+              onBack: closeSetup,
+              focusRef: setup.focusRef,
+              showAll,
+              total: setupTotal,
+              onToggleShowAll: toggleSetupScope,
+            })
             : h('div', { style: S.muted }, t('card.loading'))))
       } else {
         if (planRows.length > 0) {
@@ -872,7 +1092,9 @@ window.__ModuleLoader__.load({
           cards.push(section('plan', t('card.planTitle'),
             h('span', { style: { display: 'inline-flex', gap: '6px', alignItems: 'center' } },
               stamp ? h('span', { style: S.stamp }, stamp) : null,
-              h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => openSetup() }, '⚙')),
+              SHOW_SETUP_GEAR
+                ? h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => openSetup() }, '⚙')
+                : null),
             children))
         }
         if (balanceRows.length > 0) {
@@ -885,8 +1107,14 @@ window.__ModuleLoader__.load({
             thirdParty.map((item) => h(ThirdPartyRow, { key: item.id, item }))))
         }
         if (cards.length === 0) {
+          // An empty card used to be a single faint line that looked like a
+          // broken / unexpandable widget. Make the empty state actionable.
           cards.push(h('div', { key: 'empty', style: S.box },
-            h('div', { style: S.muted }, data ? t('card.empty') : t('card.loading'))))
+            h('div', { style: S.muted }, data ? t('card.empty') : t('card.loading')),
+            data ? h('div', { style: S.mutedSmall }, t('card.emptyHelp')) : null,
+            data ? h('div', { style: { marginTop: '6px' } },
+              h('button', { type: 'button', style: S.button, onClick: () => openSetup() }, t('card.setup')))
+              : null))
         }
         if (error) {
           cards.push(h('div', { key: 'err', style: S.box }, h('div', { style: S.err }, `${t('card.refreshErr')}${error}`)))
@@ -897,9 +1125,15 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const style = anchor
+      const style = anchor && !anchor.hidden
         ? { ...S.wrap, left: `${anchor.left}px`, bottom: `${anchor.bottom}px`, width: `${anchor.width}px` }
-        : { ...S.wrap, left: '12px', bottom: '64px', width: '260px' }
+        : { ...S.wrap, left: '12px', bottom: '64px', width: 'min(240px, 30vw)' }
+
+      // The marker must stay mounted so it can re-measure a collapsed sidebar
+      // and bring the card back when the sidebar is widened again.
+      if (anchor && anchor.hidden) {
+        return h('span', { ref: markerRef, style: S.marker, 'aria-hidden': true })
+      }
 
       return h(React.Fragment, null,
         h('span', { ref: markerRef, style: S.marker, 'aria-hidden': true }),
@@ -908,6 +1142,7 @@ window.__ModuleLoader__.load({
           role: 'region',
           'aria-label': t('card.balanceTitle'),
           'data-tick': tick,
+          'data-sidebar-width': anchor ? String(anchor.width) : undefined,
         }, cards))
     }
 
@@ -929,6 +1164,8 @@ window.__ModuleLoader__.load({
       const ctx = props.slotContext
       const t = useTranslator(ctx)
       const [entries, setEntries] = React.useState(null)
+      const [total, setTotal] = React.useState(0)
+      const [showAll, setShowAll] = React.useState(false)
       const [focus, setFocus] = React.useState(() => {
         try {
           const pending = window.localStorage.getItem(SETUP_PENDING_KEY)
@@ -940,15 +1177,42 @@ window.__ModuleLoader__.load({
       })
       React.useEffect(() => {
         let alive = true
-        fetch(SETUP_ENDPOINT, { cache: 'no-store' })
+        fetch(`${SETUP_ENDPOINT}${showAll ? '?all=1' : ''}`, { cache: 'no-store' })
           .then((response) => response.json())
-          .then((payload) => { if (alive) setEntries(payload && Array.isArray(payload.entries) ? payload.entries : []) })
+          .then((payload) => {
+            if (!alive) return
+            setEntries(payload && Array.isArray(payload.entries) ? payload.entries : [])
+            setTotal(Number(payload && payload.total) || 0)
+          })
           .catch(() => { if (alive) setEntries([]) })
         return () => { alive = false }
+      }, [showAll])
+
+      // "Back" used to only clear the focused form, which did nothing when no
+      // form was open — the dialog stayed up with no reachable close control.
+      const close = React.useCallback(() => {
+        const ui = GLOBAL_UI && GLOBAL_UI.settings
+        for (const method of ['close', 'closeSettings', 'dismiss']) {
+          if (ui && typeof ui[method] === 'function') {
+            try { ui[method]() } catch { /* keep the fallback below */ }
+            break
+          }
+        }
+        setFocus(null)
       }, [])
+
       if (!entries) return h('div', { style: S.muted }, t('card.loading'))
       return h('div', { style: { maxWidth: '520px', fontSize: '12px' } },
-        h(SetupView, { t, entries, focusRef: focus, onBack: () => setFocus(null) }))
+        h(SetupView, {
+          t,
+          entries,
+          focusRef: focus,
+          showAll,
+          total,
+          backLabel: t('setup.close'),
+          onToggleShowAll: () => { setFocus(null); setShowAll((value) => !value) },
+          onBack: close,
+        }))
     }
 
     /** Every contribution is guarded so one failure cannot break the loader. */
@@ -961,29 +1225,60 @@ window.__ModuleLoader__.load({
       }
     }
 
-    return {
-      inject: ['slots'],
-      apply(ctx) {
-        if (ctx && ctx.locale && typeof ctx.locale.register === 'function') {
-          guard('locale', () => ctx.effect(() => ctx.locale.register(NAMESPACE, { zh, en }), 'dsh-balance-display: locale'))
-        }
-        guard('sidebar card', () => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-          name: 'sidebar.footer.action',
-          id: 'balance-display',
-          order: -10,
-          label: () => translate(readLocale(ctx), 'card.balanceTitle'),
-          locale: NAMESPACE,
-        }, (props) => h(BalanceWidget, { ...props, slotContext: ctx }))))
+    /**
+     * The web boot treats any loader entry still in `loading` as a fatal
+     * startup failure, so this plugin declares NO required service and must
+     * settle synchronously. UI contributions go through scoped `ctx.inject`
+     * fibers instead: they wait for `slots` / `locale` on their own, without
+     * holding the parent entry open when a service is not ready yet.
+     */
+    function scoped(ctx, services, label, fn) {
+      if (typeof ctx.inject === 'function') {
+        guard(label, () => ctx.inject(services, (scopedCtx) => { fn(scopedCtx) }))
+      } else {
+        // Older hosts without `ctx.inject`: try once, never throw.
+        guard(label, () => { fn(ctx) })
+      }
+    }
 
-        // Settings → Plugins → Balance display: the same setup view, with room
-        // to read. Optional: the card's gear works on its own.
-        guard('settings tab', () => ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
-          name: 'settings.plugins.tab',
-          id: 'dsh-balance-display',
-          order: 30,
-          label: () => translate(readLocale(ctx), 'card.balanceTitle'),
-          locale: NAMESPACE,
-        }, (props) => h(BalanceSettingsTab, { ...props, slotContext: ctx }))))
+    return {
+      inject: [],
+      // Pure layout math, the collapsed-state helpers and the visibility
+      // flag are exposed so a Node-side regression test can verify them
+      // without Electron.
+      cardGeometry,
+      readCollapsed,
+      toggleCollapsed,
+      SHOW_SETUP_GEAR,
+      apply(ctx) {
+        const mount = (withSlots) => {
+          guard('sidebar card', () => { withSlots.slots.inject('sidebar.footer.action', () => withSlots.slots.register({
+            name: 'sidebar.footer.action',
+            id: 'balance-display',
+            order: -10,
+            label: () => translate(readLocale(withSlots), 'card.balanceTitle'),
+            locale: NAMESPACE,
+          }, (props) => h(BalanceWidget, { ...props, slotContext: withSlots }))) })
+
+          // Settings → Plugins → Balance display: the same setup view, with
+          // room to read. This is the only configuration entry point; the
+          // card itself is a read-only display.
+          guard('settings tab', () => { withSlots.slots.inject('settings.plugins.tab', () => withSlots.slots.register({
+            name: 'settings.plugins.tab',
+            id: 'dsh-balance-display',
+            order: 30,
+            label: () => translate(readLocale(withSlots), 'settings.tabTitle'),
+            locale: NAMESPACE,
+          }, (props) => h(BalanceSettingsTab, { ...props, slotContext: withSlots }))) })
+        }
+
+        scoped(ctx, ['locale'], 'locale', (withLocale) => {
+          guard('locale', () => { withLocale.effect(() => withLocale.locale.register(NAMESPACE, { zh, en }), 'dsh-balance-display: locale') })
+        })
+        scoped(ctx, ['slots'], 'slots', (withSlots) => {
+          if (!withSlots.slots || typeof withSlots.slots.inject !== 'function') return
+          mount(withSlots)
+        })
       },
     }
   },

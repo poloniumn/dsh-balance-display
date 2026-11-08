@@ -33,16 +33,63 @@ export const name = 'dsh-balance-display'
 export const inject = ['webServer']
 
 /**
- * Which credential reference a row should read. A cookie-backed adapter must
+ * The primary credential reference for one row. A cookie-backed adapter must
  * always use its own console cookie — never the model router's `apiKeyEnv`
  * (a regular API key), which the console gateway rejects with
  * `BailianGateway.Login.NotLogined`. Key-backed adapters may follow a renamed
- * profile ref; callers still fall back to the default when it doesn't resolve.
- * Exported so the cookie-vs-key rule has a regression test.
+ * profile ref. `secretRefCandidates` below expands this into the full ordered
+ * list the host actually tries; this one is kept for the cookie-vs-key rule's
+ * regression test and for callers that only need one name.
  */
 export function chooseSecretRef(secret, profileRef) {
   if (secret.type === 'cookie') return secret.ref
   return profileRef || secret.ref
+}
+
+/**
+ * Every name a key may be stored under, in priority order. Some vendors have
+ * two accepted ref names (e.g. OpenCode Go's dedicated key and the Zen key),
+ * and a profile can rename its key through `apiKeyEnv`. Names are tried one
+ * at a time against the credential store — never merged across sources.
+ * Cookies stay pinned to their own console ref.
+ */
+export function secretRefCandidates(secret, profileRef) {
+  if (!secret || secret.type === 'account') return []
+  if (secret.type === 'cookie') return [secret.ref]
+  const refs = []
+  const push = (ref) => { if (ref && !refs.includes(ref)) refs.push(ref) }
+  push(profileRef)
+  push(secret.ref)
+  for (const alias of secret.aliases || []) push(alias)
+  return refs
+}
+
+/**
+ * Which credential rows the setup page should offer. The full catalogue is
+ * two dozen vendors, most of which this profile will never enable; rendering
+ * all of them buries the form and pushes the settings dialog off screen.
+ * Default: adapters behind providers enabled in DSH, plus any adapter with a
+ * stored credential (so a key can still be cleared after its provider is
+ * switched off). `includeAll` opts into the whole catalogue.
+ */
+export function selectSetupEntries(specs, activeIds, status, includeAll = false) {
+  const active = activeIds instanceof Set ? activeIds : new Set(activeIds || [])
+  const known = status || {}
+  return specs
+    .map((spec) => {
+      // One credential can live under several ref names (a renamed profile
+      // ref, the vendor default, aliases). The host tries them in order, so
+      // the setup row is "configured" when ANY of them is stored — otherwise a
+      // disabled vendor with an aliased key would vanish and could not be
+      // cleared.
+      let state = { set: false }
+      for (const ref of spec.refs || [spec.ref]) {
+        const found = known[ref]
+        if (found && found.set) { state = { ...found }; break }
+      }
+      return { ...spec, ...state, enabled: active.has(spec.id) }
+    })
+    .filter((entry) => includeAll || entry.enabled || entry.set)
 }
 
 /** Public (read-only) state. */
@@ -116,6 +163,16 @@ export function apply(ctx, config) {
     return ids
   }
 
+  /** Adapter ids behind the model providers currently enabled in DSH. */
+  function activeAdapterIds() {
+    const ids = new Set()
+    for (const providerId of enabledProviders().keys()) {
+      const adapter = adapterFor(providerId)
+      if (adapter) ids.add(adapter.id)
+    }
+    return ids
+  }
+
   function adapterMeta(adapter, id, meta) {
     return {
       kind: adapter.kind || 'console',
@@ -159,9 +216,13 @@ export function apply(ctx, config) {
     // to the console gateway answers `BailianGateway.Login.NotLogined`.
     // For key-backed adapters the profile may have renamed the key; only follow
     // it when it actually resolves, otherwise fall back to the adapter default.
-    const candidate = chooseSecretRef(shaped.secret, meta.keyRef)
-    const ref = (await secrets.read(candidate)) ? candidate : shaped.secret.ref
-    const secret = await secrets.read(ref)
+    const candidates = secretRefCandidates(shaped.secret, meta.keyRef)
+    let ref = candidates[0] || shaped.secret.ref
+    let secret = null
+    for (const candidate of candidates) {
+      const value = await secrets.read(candidate)
+      if (value) { ref = candidate; secret = value; break }
+    }
     if (!secret) return { ...row, status: 'no-key', keyRef: ref }
 
     try {
@@ -297,26 +358,56 @@ export function apply(ctx, config) {
     }
   }
 
+  /** Refs renamed by the live `llm-pi-ai` profile, keyed by adapter id. */
+  function profileRefsByAdapter() {
+    const byAdapter = new Map()
+    for (const [id, meta] of enabledProviders()) {
+      const adapter = adapterFor(id)
+      if (!adapter || !meta.keyRef) continue
+      const list = byAdapter.get(adapter.id) || []
+      list.push(meta.keyRef)
+      byAdapter.set(adapter.id, list)
+    }
+    return byAdapter
+  }
+
+  /**
+   * Setup rows must describe the SAME credential names `buildRow` tries:
+   * renamed profile ref first, then the vendor default, then aliases. Only
+   * then do the card, the setup list and "clear" agree on what "configured"
+   * means for a provider that is not enabled.
+   */
   function setupSpec() {
-    return setupAdapters.map((adapter) => ({
-      id: adapter.id,
-      label: adapter.label,
-      kind: adapter.kind,
-      ref: adapter.secret.ref,
-      type: adapter.secret.type,
-      consoleUrl: adapter.setup?.consoleUrl || adapter.consoleUrl || null,
-      help: adapter.setup?.help || null,
-    }))
+    const renamed = profileRefsByAdapter()
+    return setupAdapters.map((adapter) => {
+      const refs = []
+      const push = (ref) => { if (ref && !refs.includes(ref)) refs.push(ref) }
+      for (const ref of renamed.get(adapter.id) || []) push(ref)
+      push(adapter.secret.ref)
+      for (const alias of adapter.secret.aliases || []) push(alias)
+      return {
+        id: adapter.id,
+        label: adapter.label,
+        kind: adapter.kind,
+        ref: refs[0],
+        refs,
+        type: adapter.secret.type,
+        consoleUrl: adapter.setup?.consoleUrl || adapter.consoleUrl || null,
+      }
+    })
   }
 
   async function handleSetup(req, res) {
     if (denied(req)) return sendEmpty(res, 403)
     try {
+      const url = new URL(req.url || '/', 'http://localhost')
+      const includeAll = url.searchParams.get('all') === '1'
       const specs = setupSpec()
-      const status = await secrets.status(specs.map((spec) => spec.ref))
+      const status = await secrets.status([...new Set(specs.flatMap((spec) => spec.refs))])
       sendJson(res, 200, {
         ok: true,
-        entries: specs.map((spec) => ({ ...spec, ...(status[spec.ref] || { set: false }) })),
+        entries: selectSetupEntries(specs, activeAdapterIds(), status, includeAll),
+        total: specs.length,
       })
     } catch (err) {
       sendJson(res, 500, { ok: false, error: String((err && err.message) || err).slice(0, 200) })
@@ -329,11 +420,15 @@ export function apply(ctx, config) {
     if (!body) return sendJson(res, 400, { ok: false, error: 'bad request' })
     const adapter = setupAdapters.find((candidate) => candidate.id === body.id)
     if (!adapter) return sendJson(res, 404, { ok: false, error: 'unknown provider' })
-    const ref = adapter.secret.ref
+    const spec = setupSpec().find((candidate) => candidate.id === body.id)
+    const ref = spec ? spec.ref : adapter.secret.ref
+    const refs = spec ? spec.refs : [ref]
 
     try {
       if (body.action === 'clear') {
-        await secrets.clear(ref)
+        // A key may have been stored under an older alias; clear every name
+        // the host would try, otherwise the row stays configured.
+        await Promise.all(refs.map((name) => secrets.clear(name)))
         cache = null
         return sendJson(res, 200, { ok: true, set: false })
       }
@@ -359,7 +454,9 @@ export function apply(ctx, config) {
       await secrets.write(ref, value)
       cache = null
       cacheAt = 0
-      return sendJson(res, 200, { ok: true, saved: true, plan: check && check.plan ? check.plan : null, set: (await secrets.status([ref]))[ref] })
+      const after = await secrets.status(refs)
+      const stored = Object.values(after).find((entry) => entry.set) || { set: false }
+      return sendJson(res, 200, { ok: true, saved: true, plan: check && check.plan ? check.plan : null, set: stored })
     } catch (err) {
       return sendJson(res, 500, { ok: false, error: String((err && err.message) || err).slice(0, 200) })
     }
@@ -372,10 +469,9 @@ export function apply(ctx, config) {
       { path: SECRET_ROUTE, handler: handleSecret },
     ]
     for (const route of routes) {
-      inner.effect(() => {
-        const dispose = inner.webServer.register({ kind: 'exact', path: route.path, handler: route.handler })
-        return () => { dispose() }
-      }, `route:${route.path}`)
+      // `register` returns the disposer itself; wrapping it in another arrow
+      // would turn an undefined return into a TypeError on unload / HMR.
+      inner.effect(() => inner.webServer.register({ kind: 'exact', path: route.path, handler: route.handler }), `route:${route.path}`)
     }
   })
 }

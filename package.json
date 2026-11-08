@@ -4,6 +4,7 @@
   "description": "Sidebar card that shows the wallet balance and Token Plan usage of every model provider enabled in DSH, and hides the rest.",
   "type": "module",
   "license": "MIT",
+  "author": "dsh-balance-display contributors",
   "icon": "./icon.svg",
   "keywords": [
     "dsh",
@@ -20,7 +21,6 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
@@ -32,13 +32,13 @@
     "client.js",
     "lib/**/*.js",
     "cordis.patch.yml",
-    "locale/*.json",
     "icon.svg",
     "tools/*.mjs",
     "tools/lib/*.mjs",
     "README.md",
     "README.zh-CN.md",
     "LICENSE",
+    "NOTICE",
     "docs/*.md"
   ],
   "scripts": {
@@ -51,12 +51,7 @@
     },
     "client": {
       "platform": "web",
-      "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-conversation"
-      ]
+      "inject": []
     }
   }
 }

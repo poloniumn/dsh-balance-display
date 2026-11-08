@@ -20,12 +20,14 @@ export default {
   url: 'https://api.acme.dev/v1/user/balance',
   consoleUrl: 'https://acme.dev/console/billing',
   parseKey: (body) => ({ amount: Number(body.balance), currency: 'USD' }),
-  setup: { label: 'Acme API key', ref: 'ACME_API_KEY' },
+  setup: {},               // presence = offer a setup form for this credential
 }
 ```
 
 That is the whole adapter for a plain wallet: the host resolves the credential,
-does `GET url` with `Authorization: Bearer <key>`, and calls `parseKey`.
+does `GET url` with `Authorization: Bearer <key>`, and calls `parseKey`. The
+setup row takes its label and credential ref from `label` and `secret.ref`, so
+`setup` is only a marker (plus an optional `consoleUrl` override).
 
 ### The row fields the card understands
 
@@ -106,6 +108,17 @@ const ALL = [deepseekAccount, deepseek, acme, /* … */ ]
 
 Then add a test in `test/providers.test.js` for the parser, and run `npm test`.
 
+## Many plain HTTP vendors at once
+
+For vendors that differ only in endpoint, auth mode and response shape, add a
+`SPECS` entry to [lib/providers/vendors.js](../lib/providers/vendors.js)
+instead of a file. The shared [lib/upstream.js](../lib/upstream.js) layer
+handles 10 s timeouts, `redirect: 'manual'`, a 1 MiB response cap, 3xx handling,
+401/403 → `expired` and retryable 408/429/5xx. `options.auth` accepts `bearer`
+(default), `raw`, `x-api-key`, `token` and `cookie`; `optional: true` endpoints
+degrade silently. `parse` and `check` are pure functions, so they are directly
+unit-testable without a network call. The Chinese guide has a fuller example.
+
 ## Checklist
 
 - [ ] One file, no vendor name anywhere else.
@@ -114,5 +127,5 @@ Then add a test in `test/providers.test.js` for the parser, and run `npm test`.
       `~/.dsh/.credentials.yaml`), so the user does not have to paste it twice.
 - [ ] Failure paths return `status: 'expired' | 'error'` with a short `detail`
       rather than throwing.
-- [ ] A parser test with a trimmed real payload.
-- [ ] `README.md` provider table updated.
+- [ ] A parser test with a minimal synthetic payload.
+- [ ] Credential tables in both `README.md` and `README.zh-CN.md` updated.

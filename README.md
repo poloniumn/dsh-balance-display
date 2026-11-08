@@ -3,8 +3,8 @@
 A DSH plugin that puts one small card under the sidebar and keeps it honest: the
 wallet balance of every model provider you have **enabled** in DSH, the usage of
 every Token Plan you pay for, and the quota of a few third-party coding
-channels. Providers you have not enabled never appear — there is nothing to
-configure and nothing to hide by hand.
+channels. Providers you have not enabled never appear, and there is nothing to
+hide by hand.
 
 > 中文说明见 [README.zh-CN.md](README.zh-CN.md)。
 
@@ -12,12 +12,16 @@ configure and nothing to hide by hand.
 
 | Section | Rows | Source |
 | --- | --- | --- |
-| **Token Plan** | Qwen · Lite, MIMO · Lite, OpenCode · Go | the vendor's plan API / console session |
-| **Balances** | DeepSeek, MiMo, Kimi, any other wallet provider | `GET <vendor>/balance` with your key |
+| **Token Plan** | Qwen · Lite, MIMO · Lite, OpenCode · Go, Z.ai, MiniMax… | the vendor's plan API / console session |
+| **Balances** | DeepSeek, MiMo, Kimi, SiliconFlow… | each vendor's own endpoint (auth, endpoint count and units differ) |
 | **Third-party** | WorkBuddy, Trae, Qoder | the `dsh-connect` plugin, when installed |
 
-Each section folds away when you click its title; the state is remembered per
-browser.
+All three sections start folded; click a title to open just that one. The state
+is remembered per browser, and folding all three at once is allowed. The card has
+no settings gear in its header — configuration lives in **Settings → Plugins →
+Balance display**. A row missing a credential stays clickable, and an empty card
+offers a **Configure key** button, so setup is still reachable if the settings
+dialog is unavailable.
 
 A few details that make the card readable at a glance:
 
@@ -54,20 +58,33 @@ Every credential lives in the DSH credential store
 
 ## Set up the credentials
 
-Rows with no credential show `未配置密钥` / `--`. Click such a row (or its ⚙)
-and DSH opens **Settings → Plugins → Balance display**; paste the value there
+Rows with no credential show `未配置密钥` / `--`. Click such a row and DSH
+opens **Settings → Plugins → Balance display**; paste the value there
 and press **保存并测试**. The value is validated against the vendor *before* it
 is stored, so a wrong paste fails immediately instead of showing an empty row
 later.
 
+The setup page lists only vendors enabled in DSH plus ones with a saved key
+(so a key can still be cleared after its provider is switched off); **Show all
+vendors** reveals the full catalogue. Only one form opens at a time and the
+panel scrolls inside its own bounds, so the close button stays in reach.
+
 | Credential | Where to get it |
 | --- | --- |
 | `DEEPSEEK_API_KEY` | <https://platform.deepseek.com/api_keys> |
-| `QWEN_TOKEN_PLAN_COOKIE` | see below — this one is a cookie, not a key |
+| `QWEN_TOKEN_PLAN_COOKIE` | see below — a console cookie, not a key |
 | `XIAOMI_API_KEY` | <https://platform.xiaomimimo.com/console/api-keys> |
 | `XIAOMI_TOKEN_PLAN_CN_API_KEY` | <https://platform.xiaomimimo.com/console/plan-manage> |
-| `OPENCODE_GO_API_KEY` | <https://opencode.ai/console/workspace> |
-| `KIMI_API_KEY` | <https://platform.moonshot.cn/console/api-keys> |
+| `OPENCODE_GO_API_KEY` (or `OPENCODE_API_KEY`) | <https://opencode.ai/console/workspace> |
+| `ZAI_CODING_CN_API_KEY` / `ZAI_CODING_API_KEY` | Z.ai China / International — **different auth modes** |
+| `OPENROUTER_API_KEY` | <https://openrouter.ai/settings/keys> |
+| `SILICONFLOW_API_KEY`, `NOVITA_API_KEY`, `HYPERBOLIC_API_KEY`, `DEEPINFRA_API_KEY`, `AI_GATEWAY_API_KEY` | each vendor's API keys page |
+| `NANOGPT_API_KEY`, `SYNTHETIC_API_KEY`, `CHUTES_API_KEY`, `OLLAMA_API_KEY`, `APIGOTO_API_KEY` | each vendor's API keys page |
+| `MINIMAX_CN_API_KEY` / `MINIMAX_API_KEY` | MiniMax China / International |
+| `ZENMUX_MANAGEMENT_API_KEY` | ZenMux **Management** key (an inference key cannot read quota) |
+
+Kimi / Moonshot (`KIMI_API_KEY`, `MOONSHOT_API_KEY`) reuse the key already
+held by the DSH model router, so they have no row on this setup page.
 
 ### The Alibaba (Qwen Token Plan) cookie
 
@@ -104,6 +121,41 @@ Provider ids map to adapters in [lib/registry.js](lib/registry.js); a provider
 without an adapter still appears as a plain console link. To add a vendor, see
 [docs/adding-a-provider.md](docs/adding-a-provider.md) — it is one small file.
 
+## How the numbers are fetched
+
+`GET + Authorization: Bearer` does not describe every vendor. The shared
+request layer in [lib/upstream.js](lib/upstream.js) now owns the wire protocol,
+and adapters in [lib/providers/vendors.js](lib/providers/vendors.js) declare
+only endpoints, an auth mode and a pure `parse` function. The vendor contracts
+were derived from `dsh-subusage` 0.24.5 (MIT; see [NOTICE](NOTICE)), whose
+adapters were checked against live accounts:
+
+* **Bare `Authorization`** (no `Bearer`) — Z.ai International, Ollama Cloud.
+* **`x-api-key` + `POST {}`** — the NanoGPT balance endpoint, which also uses a
+  different host for management keys.
+* **Cookie sessions** — Qwen / MiMo consoles, with Origin/Referer headers.
+* **Two endpoints with silent degradation** — OpenRouter (`/key` works with any
+  key; `/credits` is management-only and 403s), ZenMux, Kimi, NanoGPT. A
+  secondary failure drops only the secondary information, never the row.
+* **Business errors inside HTTP 200** — MiniMax `base_resp.status_code`.
+* **Per-vendor units** — Novita is 1/10000 USD, Hyperbolic is cents, DeepInfra
+  is a *negative* balance, Vercel is a decimal string.
+* **Two names for one credential** — OpenCode Go accepts `OPENCODE_GO_API_KEY`
+  and falls back to `OPENCODE_API_KEY`, tried one at a time.
+
+Calls through that shared layer get a 10 s timeout, `redirect: 'manual'`, a 1 MiB
+response cap; 3xx is not an auth failure, 401/403 → `expired`, 408/429/5xx are
+retryable, and a non-JSON response is treated as a stale session. The generic
+`getJson` helper still used by a few hand-written adapters has an 8 s timeout.
+`kimi-coding` probes the subscription endpoint first (4 s timeout) and falls
+back to the Moonshot wallet, so a key from either platform produces a row.
+Z.ai and OpenRouter, which used to be console links only, now read real quota
+and balance data.
+
+Vendors that need a local OAuth file, a QR login or IAM request signing (Grok,
+Codex, GitHub Copilot, Volcengine, Command Code) are intentionally not ported:
+they depend on the host's login / credential-record services.
+
 ## Privacy and network calls
 
 * The host sends a credential only to the URL its adapter declares, always with
@@ -113,7 +165,7 @@ without an adapter still appears as a plain console link. To add a vendor, see
   `connection.requestRejection`.
 * The write endpoint (`POST /dsh-balance/secret`) accepts one value, validates
   it, and stores it in the DSH credential store. It never returns a secret — the
-  setup page only ever sees a mask such as `oc_s…9F (41)`.
+  setup page only ever sees a mask such as `oc_…9F (41)`.
 * Nothing is fetched from a third party to make the card work except: the vendor
   APIs you configured, two public documentation pages (DeepSeek pricing, MiMo
   plan FAQ) once a day, the Qwen model catalog once a day at the discount
@@ -153,6 +205,12 @@ lib/http.js           loopback fence + tiny JSON helpers
 tools/                the cookie CLI
 ```
 
+## Credits
+
+The vendor API contracts were derived from
+[dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage) by
+KouzakiUmi (MIT). The required attribution is kept in [NOTICE](NOTICE).
+
 ## License
 
-MIT.
+MIT — see [LICENSE](LICENSE).

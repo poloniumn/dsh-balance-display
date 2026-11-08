@@ -11,6 +11,16 @@ node_modules/
 *.local.json
 .dsh-balance-display/
 
-# Never commit a real credential or an npm tarball by accident.
+# Never commit a real credential, a backup or an npm tarball by accident.
 .credentials.yaml
+.env
+.env.*
+*.pem
+*.key
+*.bak
+*.orig
+*.tmp
 *.tgz
+coverage/
+.idea/
+.vscode/
