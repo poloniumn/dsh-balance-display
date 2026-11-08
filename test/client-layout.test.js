@@ -113,8 +113,9 @@ test('folding the third section no longer reopens the other two', () => {
     'reopening one section must not touch the others')
 
   assert.equal(toggle({}, 'plan').plan, false, 'sparse legacy state behaves like all-folded')
-  assert.doesNotMatch(source, /Never let the last visible section disappear/)
+  assert.doesNotMatch(source, /last visible section/i, 'the old reset guard must not come back')
   assert.doesNotMatch(source, /removeItem\(STORAGE_KEY\)/)
+  assert.doesNotMatch(source, /SECTION_KEYS\.every/)
   assert.match(source, /setItem\(STORAGE_KEY, JSON\.stringify\(next\)\)/)
 })
 

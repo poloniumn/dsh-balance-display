@@ -878,8 +878,7 @@ window.__ModuleLoader__.load({
 
     /**
      * Pure: folding one section never touches the other two. All three folded
-     * is a valid state. The old "never let the last visible section disappear"
-     * reset was the bug where clicking the third header reopened everything.
+     * is a valid state — the card then shows three compact headers only.
      */
     function toggleCollapsed(prev, key) {
       const current = normalizeCollapsed(prev)
