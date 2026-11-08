@@ -32,6 +32,19 @@ export const name = 'dsh-balance-display'
 
 export const inject = ['webServer']
 
+/**
+ * Which credential reference a row should read. A cookie-backed adapter must
+ * always use its own console cookie — never the model router's `apiKeyEnv`
+ * (a regular API key), which the console gateway rejects with
+ * `BailianGateway.Login.NotLogined`. Key-backed adapters may follow a renamed
+ * profile ref; callers still fall back to the default when it doesn't resolve.
+ * Exported so the cookie-vs-key rule has a regression test.
+ */
+export function chooseSecretRef(secret, profileRef) {
+  if (secret.type === 'cookie') return secret.ref
+  return profileRef || secret.ref
+}
+
 /** Public (read-only) state. */
 export const ROUTE = '/dsh-balance/state.json'
 /** Setup page: which secrets are stored, and their masked state. */
@@ -140,11 +153,13 @@ export function apply(ctx, config) {
 
     if (row.kind === 'console' || !shaped.secret?.ref) return row
 
-    // The profile's own `apiKeyEnv` (and the console cookie, which the profile
-    // never stores) win over the adapter default.
-    const candidate = meta.keyRef || shaped.secret.ref
-    // The profile may have renamed the key; only follow it when it resolves,
-    // otherwise the user would be asked for a credential nothing reads.
+    // Cookie-backed adapters read their own console cookie, NOT the model
+    // router's `apiKeyEnv`: a plan like Qwen needs the browser session, while
+    // the profile may point `apiKeyEnv` at a regular API key. Sending that key
+    // to the console gateway answers `BailianGateway.Login.NotLogined`.
+    // For key-backed adapters the profile may have renamed the key; only follow
+    // it when it actually resolves, otherwise fall back to the adapter default.
+    const candidate = chooseSecretRef(shaped.secret, meta.keyRef)
     const ref = (await secrets.read(candidate)) ? candidate : shaped.secret.ref
     const secret = await secrets.read(ref)
     if (!secret) return { ...row, status: 'no-key', keyRef: ref }

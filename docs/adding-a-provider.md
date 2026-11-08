@@ -59,6 +59,9 @@ async fetchSecret(key) {
 
 A `cookie` secret is normalised and format-checked by the host before it reaches
 you; the setup page shows the vendor's console link so the user can copy it.
+The host **always** reads a cookie adapter's own `secret.ref` — it never follows
+the model router's `apiKeyEnv` for a cookie, because the console rejects a
+regular API key. Key-backed adapters may follow a renamed profile ref instead.
 
 ## 3. A factory, when the adapter keeps state
 
