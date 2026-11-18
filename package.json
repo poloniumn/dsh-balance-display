@@ -1,10 +1,18 @@
 {
   "name": "dsh-balance-display",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Sidebar card that shows the wallet balance and Token Plan usage of every model provider enabled in DSH, and hides the rest.",
   "type": "module",
   "license": "MIT",
   "author": "dsh-balance-display contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/poloniumn/dsh-balance-display.git"
+  },
+  "homepage": "https://github.com/poloniumn/dsh-balance-display#readme",
+  "bugs": {
+    "url": "https://github.com/poloniumn/dsh-balance-display/issues"
+  },
   "icon": "./icon.svg",
   "keywords": [
     "dsh",
@@ -37,6 +45,7 @@
     "tools/lib/*.mjs",
     "README.md",
     "README.zh-CN.md",
+    "CHANGELOG.md",
     "LICENSE",
     "NOTICE",
     "docs/*.md"

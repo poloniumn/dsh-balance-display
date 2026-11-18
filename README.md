@@ -6,7 +6,8 @@ every Token Plan you pay for, and the quota of a few third-party coding
 channels. Providers you have not enabled never appear, and there is nothing to
 hide by hand.
 
-> 中文说明见 [README.zh-CN.md](README.zh-CN.md)。
+> 中文说明见 [README.zh-CN.md](README.zh-CN.md)。 Release history:
+> [CHANGELOG.md](CHANGELOG.md).
 
 ## What the card shows
 
@@ -62,15 +63,24 @@ A few details that make the card readable at a glance:
 
 ## Install
 
+From this checkout:
+
 ```bash
-# from this directory
 dsh plugin install .
 ```
 
-Or, inside DSH, point the plugin manager at this folder
-(`plugin_manager install_bundle target=<this directory>`). The bundle inserts
+From the published package:
+
+```bash
+dsh plugin install dsh-balance-display
+```
+
+Or, inside DSH, point the plugin manager at either
+(`plugin_manager install_bundle target=<dir or package>`). The bundle inserts
 one loader row (`dsh-balance-display`) and needs no host-side configuration:
 it reads the provider list straight from your `llm-pi-ai` profile record.
+Restart DSH after installing or upgrading — the host half and the sidebar card
+are both loaded once, at boot.
 
 Every credential lives in the DSH credential store
 (`~/.dsh/.credentials.yaml`) — never in the plugin config, the log, or
@@ -84,10 +94,13 @@ and press **保存并测试**. The value is validated against the vendor *before
 is stored, so a wrong paste fails immediately instead of showing an empty row
 later.
 
-The setup page lists only vendors enabled in DSH plus ones with a saved key
-(so a key can still be cleared after its provider is switched off); **Show all
-vendors** reveals the full catalogue. Only one form opens at a time and the
-panel scrolls inside its own bounds, so the close button stays in reach.
+The setup page is a whole tab, not a dialog. Every credential the plugin knows
+about gets its own card, grouped by kind (Token Plan cookies first, then the
+wallets), and each card carries the masked value, the vendor console link, the
+balance or plan usage it just read, and one paste box. A Cookie-Editor JSON
+export, a Netscape `cookies.txt`, and the raw `Cookie:` header all work, and a
+file can be dropped onto the box instead of pasted. Nothing is stored until the
+value passes the vendor check, so a wrong paste fails on the spot.
 
 | Credential | Where to get it |
 | --- | --- |

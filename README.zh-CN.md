@@ -4,7 +4,7 @@ DSH 侧边栏下方的余额小卡片：显示你在 DSH 里**已启用**的模�
 Token Plan 用量，以及第三方编程渠道的额度。没启用的服务商不会出现，也不需要
 任何手动隐藏。
 
-> English: [README.md](README.md)。
+> English: [README.md](README.md)。版本历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 卡片内容
 
@@ -49,14 +49,22 @@ Token Plan 用量，以及第三方编程渠道的额度。没启用的服务商
 
 ## 安装
 
+从本仓库：
+
 ```bash
-# 在本目录执行
 dsh plugin install .
 ```
 
-或在 DSH 里让插件管理器指向这个目录。bundle 只会插入一行加载项
+从已发布的包：
+
+```bash
+dsh plugin install dsh-balance-display
+```
+
+或在 DSH 里让插件管理器指向其中之一。bundle 只会插入一行加载项
 （`dsh-balance-display`），宿主侧无需配置：服务商列表直接读你 `llm-pi-ai`
-配置里的 providers。
+配置里的 providers。装好或升级之后**重启 DSH**：宿主侧与侧栏卡片都只在启动时
+加载一次。
 
 所有凭据都放在 DSH 凭据库（`~/.dsh/.credentials.yaml`），不会写进插件配置、日志
 或 `localStorage`。
@@ -84,9 +92,11 @@ dsh plugin install .
 Kimi / Moonshot（`KIMI_API_KEY`、`MOONSHOT_API_KEY`）直接复用 DSH 模型路由里
 已有的密钥，因此设置页没有对应表单，需要在模型服务商配置里填写。
 
-设置页默认只列出 **DSH 后台已启用的服务商**，以及已经保存过密钥的服务商（停用后
-仍可清除）；要提前给别家填密钥，点「显示全部服务商」。表单一次只展开一个，面板
-在自身范围内滚动，顶部「关闭」始终可见。没启用的服务商不会在卡片上冒出来。
+设置页是一整页标签，不是弹窗：插件认识的每一份凭据各占一张卡片，按类型分组
+（Token Plan 的 Cookie 在前，钱包类在后）。卡片上给出掩码值、厂商控制台链接、
+刚读到的余额或套餐用量，以及一个粘贴框——Cookie-Editor 的 JSON 导出、Netscape
+的 `cookies.txt`、或整行 `Cookie:` 头都能直接用，也可以把文件直接拖进框里。
+值只有通过厂商校验之后才落库，粘错会当场失败。没启用的服务商不会在卡片上冒出来。
 
 ### 阿里（Qwen Token Plan）Cookie
 
