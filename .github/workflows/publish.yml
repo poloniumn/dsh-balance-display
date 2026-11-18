@@ -29,7 +29,19 @@ jobs:
         run: |
           npm run check
           npm test
+      - name: Is an npm token configured?
+        id: token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "NPM_TOKEN is not set — skipping the publish step." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Publish to npm
+        if: steps.token.outputs.ready == 'true'
         run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
