@@ -20,7 +20,9 @@ window.__ModuleLoader__.load({
 
     const NAMESPACE = 'dsh-balance-display'
     const ENDPOINT = '/dsh-balance/state.json'
-    const SETUP_ENDPOINT = '/dsh-balance/setup.json'
+    const PEERS_ENDPOINT = '/dsh-balance/peers.json'
+    // Stored credentials + the usage each one unlocks (the shared page).
+    const SETTINGS_ENDPOINT = '/dsh-balance/settings.json'
     const SECRET_ENDPOINT = '/dsh-balance/secret'
     const POLL_MS = 60000
     // A host-provided window bridge is the only way to reach the settings
@@ -43,7 +45,12 @@ window.__ModuleLoader__.load({
       'card.planTitle': 'Token Plan',
       'card.balanceTitle': '账户余额',
       'card.thirdTitle': '第三方渠道',
-      'card.thirdEmpty': '未检测到第三方渠道',
+      'ofm.credits': '剩余积分',
+      'ofm.token': '剩余 Token',
+      'ofm.dollars': '剩余余额（USD）',
+      'ofm.quota': '剩余配额',
+      'ofm.accounts': '已查询 {n} 个账号',
+      'ofm.failed': '积分查询失败',
       'card.empty': '没有已启用的模型服务商',
       'card.loading': '余额加载中…',
       'card.refreshErr': '刷新失败：',
@@ -54,46 +61,53 @@ window.__ModuleLoader__.load({
       'settings.tabTitle': '余额显示',
       'card.emptyHelp': '在 DSH 后台启用模型服务商，或先在这里填入密钥。',
       'row.noKey': '未配置密钥',
-      'row.expired': '登录已过期',
-      'row.failed': '获取失败',
       'row.days': '剩 {n} 天',
       'row.today': '今日减少',
       'row.todayPlan': '今日已用',
       'row.peakTip': '高峰时段（{windows}），空闲时段半价',
       'row.offPeakTip': '当前为空闲时段',
       'row.setupTip': '点击这里填入 {label}',
-      'row.reload': '刷新',
       'row.night': '夜间 {discount} 折',
-      'setup.title': '余额显示 · 配置',
-      'setup.subtitle': '密钥与 Cookie 只保存在本机 DSH 凭据库，不写入插件配置、日志或浏览器存储。',
-      'setup.back': '返回',
-      'setup.open': '打开控制台',
-      'setup.save': '保存并测试',
-      'setup.clear': '清除',
-      'setup.stored': '已配置',
-      'setup.missing': '未配置',
-      'setup.testing': '正在校验…',
-      'setup.saved': '已保存',
-      'setup.cleared': '已清除',
-      'setup.forceSave': '仍然保存',
-      'setup.fold': '收起',
       'setup.handoff': '已打开「设置 → 插件 → 余额显示」，请在那里的表单中粘贴。',
-      'setup.close': '关闭',
-      'setup.showAll': '显示全部服务商（{n}）',
-      'setup.onlyEnabled': '只显示已启用',
-      'setup.scopeHint': '默认只列出 DSH 后台已启用的服务商，以及已保存密钥的服务商。',
-      'setup.disabledTag': '未启用',
-      'setup.howToCookie': '打开控制台并登录 → 开发者工具 → 网络 → 任意请求 → 复制请求头中整行的 Cookie 值。Cookie 约 7 天过期，过期后重新复制即可。',
-      'setup.howToKey': '在控制台创建 API Key 后粘贴到这里。',
-      'setup.cookiePlaceholder': 'name=value; name2=value2',
-      'setup.keyPlaceholder': '粘贴 API Key',
-      'setup.neverShown': '出于安全考虑，已保存的值不会回显。',
+      'set.subtitle': '有些用量只存在于已登录的控制台，API 密钥读不到。这里保存浏览器 Cookie 与配套令牌。',
+      'set.none': '没有需要 Cookie 的服务商。',
+      'set.optional': '可选',
+      'set.console': '打开控制台',
+      'set.add': '配置 Cookie',
+      'set.update': '更新 Cookie',
+      'set.clear': '清除',
+      'set.save': '保存并测试',
+      'set.saving': '测试中…',
+      'set.cancel': '取消',
+      'set.saved': '已保存，Cookie 可用',
+      'set.cleared': '已清除。',
+      'set.failed': '保存失败',
+      'set.placeholder': '粘贴整段 Cookie 头，或 Cookie-Editor「Export As: JSON」的全部内容',
+      'set.keyPlaceholder': '粘贴控制键（vela_ctrl_…）',
+      'set.textPlaceholder': '工作区 ID（留空则自动读取）',
+      'set.foot': 'Cookie 只写入本机 DSH 凭据库，不写入插件配置、日志或浏览器存储。',
+      'set.used': '已用 {p}',
+      'set.until': '至 {d}',
+      'set.expired': 'Cookie 已失效，请重新粘贴。',
+      'set.err': '读取失败',
+      'set.retry': '重试',
+      'set.hidden': '未取到用量',
+      'set.pasteHint': '直接粘贴整段 Cookie 头，或 Cookie-Editor「Export As: JSON」的全部内容',
+      'set.pasteLoaded': '已读入粘贴内容',
+      'set.pasteEmpty': '没有读到内容，重新粘贴一次',
+      'set.imported': '已导入 {n} 条 Cookie',
+      'set.filtered': '（另有 {n} 条属于其他站点，已略过）',
     }
     const en = {
       'card.planTitle': 'Token plan',
       'card.balanceTitle': 'Balances',
       'card.thirdTitle': 'Third-party',
-      'card.thirdEmpty': 'No third-party channel detected',
+      'ofm.credits': 'Credits left',
+      'ofm.token': 'Tokens left',
+      'ofm.dollars': 'Balance left (USD)',
+      'ofm.quota': 'Quota left',
+      'ofm.accounts': '{n} accounts queried',
+      'ofm.failed': 'Credit lookup failed',
       'card.empty': 'No model provider is enabled',
       'card.loading': 'Loading balances…',
       'card.refreshErr': 'Refresh failed: ',
@@ -104,40 +118,42 @@ window.__ModuleLoader__.load({
       'settings.tabTitle': 'Balance display',
       'card.emptyHelp': 'Enable a model provider in DSH, or add a key here first.',
       'row.noKey': 'No key',
-      'row.expired': 'Signed out',
-      'row.failed': 'Failed',
       'row.days': '{n}d left',
       'row.today': 'used today',
       'row.todayPlan': 'used today',
       'row.peakTip': 'Peak hours ({windows}) — off-peak is half price',
       'row.offPeakTip': 'Off-peak right now',
       'row.setupTip': 'Click to add {label}',
-      'row.reload': 'Reload',
       'row.night': 'Night {discount}× off',
-      'setup.title': 'Balance display · Setup',
-      'setup.subtitle': 'Keys and cookies live in the local DSH credential store — never in the plugin config, the logs or browser storage.',
-      'setup.back': 'Back',
-      'setup.open': 'Open console',
-      'setup.save': 'Save and test',
-      'setup.clear': 'Clear',
-      'setup.stored': 'Configured',
-      'setup.missing': 'Not configured',
-      'setup.testing': 'Checking…',
-      'setup.saved': 'Saved',
-      'setup.cleared': 'Cleared',
-      'setup.forceSave': 'Save anyway',
-      'setup.fold': 'Close',
       'setup.handoff': 'Opened Settings → Plugins → Balance display — paste it into the form there.',
-      'setup.close': 'Close',
-      'setup.showAll': 'Show all vendors ({n})',
-      'setup.onlyEnabled': 'Only enabled',
-      'setup.scopeHint': 'By default only vendors enabled in DSH, plus ones with a saved key, are listed.',
-      'setup.disabledTag': 'Not enabled',
-      'setup.howToCookie': 'Sign in to the console → DevTools → Network → any request → copy the whole `Cookie` request header. It expires after about a week; copy it again when the row says signed out.',
-      'setup.howToKey': 'Create an API key in the console and paste it here.',
-      'setup.cookiePlaceholder': 'name=value; name2=value2',
-      'setup.keyPlaceholder': 'Paste the API key',
-      'setup.neverShown': 'Stored values are never echoed back.',
+      'set.subtitle': 'Some usage only exists behind a signed-in console; an API key cannot read it. Cookies and companion tokens live here.',
+      'set.none': 'No provider needs a cookie.',
+      'set.optional': 'optional',
+      'set.console': 'Open console',
+      'set.add': 'Add cookie',
+      'set.update': 'Update cookie',
+      'set.clear': 'Clear',
+      'set.save': 'Save and test',
+      'set.saving': 'Testing…',
+      'set.cancel': 'Cancel',
+      'set.saved': 'Saved — the cookie works',
+      'set.cleared': 'Cleared.',
+      'set.failed': 'Save failed',
+      'set.placeholder': 'Paste the whole Cookie header, or everything Cookie-Editor “Export As: JSON” gives you',
+      'set.keyPlaceholder': 'Paste the control key (vela_ctrl_…)',
+      'set.textPlaceholder': 'Workspace id (read automatically when empty)',
+      'set.foot': 'Cookies are written to the local DSH credential store only — never to the plugin config, the logs or browser storage.',
+      'set.used': '{p} used',
+      'set.until': 'until {d}',
+      'set.expired': 'The cookie expired — paste a fresh one.',
+      'set.err': 'Could not load',
+      'set.retry': 'Retry',
+      'set.hidden': 'No usage read',
+      'set.pasteHint': 'Paste the whole Cookie header, or everything Cookie-Editor “Export As: JSON” gives you',
+      'set.pasteLoaded': 'Pasted content loaded',
+      'set.pasteEmpty': 'Nothing was read — paste it again',
+      'set.imported': '{n} cookies imported',
+      'set.filtered': ' ({n} more belong to other sites and were skipped)',
     }
 
     const FALLBACK = en
@@ -409,7 +425,6 @@ window.__ModuleLoader__.load({
         marginTop: '4px',
         wordBreak: 'break-word',
       },
-      ok: { color: 'var(--dsw-alias-state-success-primary, #49aa19)', fontSize: '11px', marginTop: '4px' },
       sep: { borderTop: '1px dashed var(--dsw-alias-border-l1, rgba(255,255,255,0.08))', margin: '2px 0' },
       barRow: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0 3px' },
       bar: {
@@ -490,7 +505,6 @@ window.__ModuleLoader__.load({
         cursor: 'pointer',
         fontWeight: 500,
       },
-      buttonRow: { display: 'flex', gap: '6px', alignItems: 'center', marginTop: '5px', flexWrap: 'wrap' },
       mutedSmall: {
         fontSize: '10px',
         color: 'var(--dsw-alias-label-secondary, rgba(255,255,255,0.5))',
@@ -501,36 +515,72 @@ window.__ModuleLoader__.load({
       // button) must never scroll out of reach, no matter how many vendors
       // are listed. Without this, two dozen expanded forms push the host's
       // settings dialog off screen.
-      setupView: {
+      // ---- credential page: the content is shared with dsh-model-panel ----
+      page: { display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' },
+      pageHead: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' },
+      pageTitle: { fontWeight: 600, fontSize: '13px' },
+      pageSub: { color: 'var(--dsw-alias-label-secondary, rgba(255,255,255,0.45))', fontSize: '11px', lineHeight: 1.5 },
+      group: {
+        fontSize: '10px',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.4))',
+        marginTop: '4px',
+      },
+      card: {
+        border: '1px solid var(--dsw-alias-border-l1, rgba(255,255,255,0.1))',
+        borderRadius: '10px',
+        padding: '8px 10px',
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: 'min(70vh, 520px)',
-        minHeight: 0,
+        gap: '4px',
+        background: 'var(--dsw-alias-bg-layer-1, rgba(255,255,255,0.03))',
       },
-      setupHeader: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '8px',
-        flex: '0 0 auto',
-        paddingBottom: '2px',
-      },
-      setupScroll: {
-        flex: '1 1 auto',
-        minHeight: 0,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        paddingRight: '4px',
-        boxSizing: 'border-box',
-      },
-      disabledTag: {
+      cardTop: { display: 'flex', alignItems: 'center', gap: '6px' },
+      cardName: { fontWeight: 500, flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      cardOpt: { fontSize: '10px', color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))' },
+      pill: {
+        marginLeft: 'auto',
         fontSize: '10px',
-        color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))',
-        border: '1px solid var(--dsw-alias-border-l1, rgba(255,255,255,0.12))',
-        borderRadius: '4px',
-        padding: '0 4px',
+        borderRadius: '10px',
+        padding: '1px 8px',
+        border: '1px solid var(--dsw-alias-border-l1, rgba(255,255,255,0.14))',
+        color: 'var(--dsw-alias-label-secondary, rgba(255,255,255,0.6))',
+        whiteSpace: 'nowrap',
         flex: '0 0 auto',
       },
+      pillOn: {
+        color: 'var(--dsw-alias-state-success-primary, #49aa19)',
+        borderColor: 'rgba(73,170,25,0.5)',
+        background: 'rgba(73,170,25,0.12)',
+      },
+      cardMeta: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))' },
+      cardCode: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '10px', opacity: 0.85 },
+      usage: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px' },
+      usageErr: { fontSize: '11px', color: 'var(--dsw-alias-state-error-primary, #ff7875)' },
+      usagePlan: { fontWeight: 500, fontVariantNumeric: 'tabular-nums' },
+      usageBar: {
+        width: '96px',
+        height: '5px',
+        borderRadius: '3px',
+        background: 'var(--dsw-alias-border-l1, rgba(255,255,255,0.1))',
+        overflow: 'hidden',
+        flex: '0 0 auto',
+      },
+      usageBarFill: { height: '100%', background: 'var(--dsw-alias-state-success-primary, #49aa19)', transition: 'width 0.3s ease' },
+      usageBarLow: { background: 'var(--dsw-alias-state-error-primary, #ff7875)' },
+      usagePct: { fontVariantNumeric: 'tabular-nums', color: 'var(--dsw-alias-label-secondary, rgba(255,255,255,0.65))' },
+      usageUntil: { color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))' },
+      usageWins: { display: 'inline-flex', gap: '8px', flexWrap: 'wrap' },
+      usageWin: { display: 'inline-flex', alignItems: 'center', gap: '4px' },
+      usageWLabel: { fontSize: '10px', color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.5))' },
+      hintLine: { fontSize: '10px', color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.5))' },
+      actions: { display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', marginTop: '2px' },
+      note: { fontSize: '11px', color: 'var(--dsw-alias-state-success-primary, #49aa19)' },
+      noteBad: { fontSize: '11px', color: 'var(--dsw-alias-state-error-primary, #ff7875)' },
+      emptyLine: { color: 'var(--dsw-alias-label-secondary, rgba(255,255,255,0.45))', fontSize: '11px', padding: '6px 0' },
+      pasteHint: { fontSize: '10px', color: 'var(--dsw-alias-label-tertiary, rgba(255,255,255,0.45))' },
+      inputOver: { borderColor: 'var(--dsw-alias-brand-primary, #ffb366)', background: 'rgba(255,179,102,0.08)' },
     }
 
     function fillStyle(pct) {
@@ -619,13 +669,52 @@ window.__ModuleLoader__.load({
     }
 
     // ---------- third-party channel ----------
+    /** 1.2K / 3.4M，与 our Free Model 卡片同一种缩写习惯。 */
+    function compact(value) {
+      const n = Math.round(Number(value) || 0)
+      const abs = Math.abs(n)
+      if (abs >= 1_000_000) return `${(n / 1e6).toFixed(abs >= 10_000_000 ? 0 : 1)}M`
+      if (abs >= 1000) return `${(n / 1000).toFixed(abs >= 10_000 ? 0 : 1)}K`
+      return String(n)
+    }
+
+    /**
+     * EAC router 行的右侧文案由本地目录拼出来（宿主不猜语言）；单位原样保留，
+     * token / 积分 / 美元之间绝不互相折算。
+     */
+    function ofmLabel(item, t) {
+      if (item.ok === false) return t('ofm.failed')
+      if (item.unit === 'dollars') {
+        return Number.isFinite(item.amount) ? `${t('ofm.dollars')} ${money(item.amount, 'USD')}` : t('ofm.failed')
+      }
+      if (item.unit === 'quota') {
+        // Gemini 的 total 是百分比相加，不能当余额；有分桶就交给下面的进度条，
+        // 没有分桶时退回「查询了几个账号」，不编一个总数。
+        return Number.isFinite(item.remainPct)
+          ? t('ofm.quota')
+          : (item.accounts > 0 ? t('ofm.accounts', { n: item.accounts }) : t('ofm.failed'))
+      }
+      if (Number.isFinite(item.amount)) {
+        const head = item.unit === 'token' ? t('ofm.token') : t('ofm.credits')
+        return `${head} ${compact(item.amount)}`
+      }
+      if (Number.isFinite(item.remainPct)) {
+        const head = item.unit === 'token' ? t('ofm.token') : t('ofm.credits')
+        return `${head} ${pctText(item.remainPct)}`
+      }
+      return t('ofm.failed')
+    }
+
     function ThirdPartyRow(props) {
-      const { item } = props
+      const { item, t } = props
       const pct = Number.isFinite(item.remainPct) ? Math.max(0, Math.min(100, item.remainPct)) : null
+      const label = item.source === 'ofm'
+        ? ofmLabel(item, t)
+        : (item.label || (pct !== null ? `${Math.round(pct)}%` : ''))
       return h('div', null,
         h('div', { style: S.row },
           h('span', { style: S.left }, h('span', { style: S.name, title: item.kind || undefined }, item.name)),
-          h('span', { style: S.amount }, item.label || (pct !== null ? `${Math.round(pct)}%` : ''))),
+          h('span', { style: S.amount }, label)),
         pct === null ? null : h(Bar, { pct }))
     }
 
@@ -714,142 +803,6 @@ window.__ModuleLoader__.load({
         collapsed ? null : h('div', { id: `dsh-balance-${id}`, style: S.body }, children))
     }
 
-    // ---------- setup view ----------
-    function SecretForm(props) {
-      const { entry, t, value, setValue, busy, result, onSave, onClear, onForce, onClose } = props
-      const isCookie = entry.type === 'cookie'
-      return h('div', null,
-        h('div', { style: S.row },
-          h('span', { style: S.left },
-            h('span', { style: { ...S.name, cursor: 'default' } }, entry.label),
-            h('span', { style: { ...S.muted, fontSize: '10px' } }, entry.ref)),
-          h('span', { style: entry.set ? S.ok : S.muted }, entry.set ? t('setup.stored') : t('setup.missing'))),
-        h('textarea', {
-          rows: isCookie ? 3 : 1,
-          style: { ...S.input, resize: 'vertical', minHeight: isCookie ? '44px' : undefined },
-          placeholder: isCookie ? t('setup.cookiePlaceholder') : t('setup.keyPlaceholder'),
-          value,
-          spellCheck: false,
-          autoComplete: 'off',
-          onChange: (event) => setValue(event.target.value),
-        }),
-        h('div', { style: S.mutedSmall }, isCookie ? t('setup.howToCookie') : t('setup.howToKey'), ' ', t('setup.neverShown')),
-        h('div', { style: S.buttonRow },
-          h('button', { type: 'button', style: S.buttonPrimary, disabled: busy || !value.trim(), onClick: onSave },
-            busy ? t('setup.testing') : t('setup.save')),
-          entry.consoleUrl
-            ? h('a', { href: entry.consoleUrl, target: '_blank', rel: 'noreferrer noopener', style: { ...S.button, textDecoration: 'none' } },
-              t('setup.open'))
-            : null,
-          entry.set
-            ? h('button', { type: 'button', style: S.button, disabled: busy, onClick: onClear }, t('setup.clear'))
-            : null,
-          onClose ? h('button', { type: 'button', style: S.button, onClick: onClose }, t('setup.fold')) : null),
-        result && result.ok ? h('div', { style: S.ok }, `${result.saved ? t('setup.saved') : t('setup.cleared')}${result.plan ? ` · ${result.plan}` : ''}`) : null,
-        result && result.ok === false
-          ? h('div', null,
-            h('div', { style: S.err }, result.error || t('row.failed')),
-            result.canForce
-              ? h('button', { type: 'button', style: { ...S.button, marginTop: '4px' }, onClick: onForce }, t('setup.forceSave'))
-              : null)
-          : null)
-    }
-
-    function SetupView(props) {
-      const { t, entries, onBack, focusRef, showAll, onToggleShowAll, total, backLabel } = props
-      const [values, setValues] = React.useState({})
-      const [busy, setBusy] = React.useState({})
-      const [results, setResults] = React.useState({})
-      const [focus, setFocus] = React.useState(focusRef || null)
-
-      // At most ONE form is ever open. With the vendor catalogue at two dozen
-      // entries, rendering every form at once made the settings dialog taller
-      // than the window and put its close button out of reach.
-      React.useEffect(() => { setFocus(focusRef || null) }, [focusRef])
-
-      const post = React.useCallback(async (id, payload) => {
-        setBusy((prev) => ({ ...prev, [id]: true }))
-        try {
-          const response = await fetch(SECRET_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, ...payload }),
-          })
-          const body = await response.json().catch(() => null)
-          return body || { ok: false, error: `HTTP ${response.status}` }
-        } catch (err) {
-          return { ok: false, error: String((err && err.message) || err) }
-        } finally {
-          setBusy((prev) => ({ ...prev, [id]: false }))
-        }
-      }, [])
-
-      const save = React.useCallback(async (entry, force) => {
-        const body = await post(entry.id, { action: 'save', value: values[entry.ref] || '', force: Boolean(force) })
-        // A failed format check is not something "save anyway" can fix.
-        const canForce = body.ok === false && body.saved === false && !String(body.error || '').includes('look like')
-        setResults((prev) => ({ ...prev, [entry.ref]: { ...body, canForce } }))
-        if (body.ok) setValues((prev) => ({ ...prev, [entry.ref]: '' }))
-      }, [post, values])
-
-      const clear = React.useCallback(async (entry) => {
-        const body = await post(entry.id, { action: 'clear' })
-        setResults((prev) => ({ ...prev, [entry.ref]: body.ok ? { ok: true, cleared: true } : body }))
-      }, [post])
-
-      const list = entries.map((entry, index) => {
-        const compact = h('div', { style: S.row, key: `row-${entry.id}` },
-          h('span', { style: S.left },
-            h('span', {
-              style: { ...S.name, cursor: 'pointer' },
-              title: t('row.setupTip', { label: entry.label }),
-              onClick: () => setFocus(entry.ref),
-            }, entry.label),
-            entry.enabled === false ? h('span', { style: S.disabledTag }, t('setup.disabledTag')) : null,
-            h('span', { style: { ...S.muted, fontSize: '10px' } }, entry.ref)),
-          h('span', {
-            style: { ...(entry.set ? S.ok : S.muted), marginTop: 0, cursor: 'pointer' },
-            onClick: () => setFocus(entry.ref),
-          }, entry.set ? t('setup.stored') : t('setup.missing')))
-
-        return h('div', { key: entry.id },
-          index > 0 ? h('div', { style: S.sep }) : null,
-          focus === entry.ref
-            ? h(SecretForm, {
-              entry,
-              t,
-              value: values[entry.ref] || '',
-              setValue: (next) => setValues((prev) => ({ ...prev, [entry.ref]: next })),
-              busy: Boolean(busy[entry.id]),
-              result: results[entry.ref] || null,
-              onSave: () => save(entry, false),
-              onForce: () => save(entry, true),
-              onClear: () => clear(entry),
-              onClose: () => setFocus(null),
-            })
-            : compact)
-      })
-
-      // Header stays outside the scroll area: the close/back button is always
-      // visible even when every vendor in the catalogue is listed.
-      return h('div', { style: S.setupView },
-        h('div', { style: S.setupHeader },
-          h('span', { style: S.title }, t('setup.title')),
-          h('button', { type: 'button', style: S.button, onClick: onBack }, backLabel || t('setup.back'))),
-        h('div', { style: S.setupScroll },
-          h('div', { style: S.mutedSmall }, t('setup.subtitle')),
-          h('div', { style: S.mutedSmall }, t('setup.scopeHint')),
-          onToggleShowAll
-            ? h('div', { style: { marginTop: '5px' } },
-              h('button', { type: 'button', style: S.button, onClick: onToggleShowAll },
-                showAll ? t('setup.onlyEnabled') : t('setup.showAll', { n: total || 0 })))
-            : null,
-          entries.length === 0
-            ? h('div', { style: { ...S.mutedSmall, marginTop: '8px' } }, t('card.empty'))
-            : null,
-          list))
-    }
-
     // ---------- the card ----------
     const SECTION_KEYS = ['plan', 'balance', 'third']
 
@@ -895,47 +848,7 @@ window.__ModuleLoader__.load({
       const [anchor, setAnchor] = React.useState(null)
       const [tick, setTick] = React.useState(0)
       const [collapsed, setCollapsed] = React.useState(readCollapsed)
-      const [setup, setSetup] = React.useState(null) // null | { entries, focusRef }
-      const [showAll, setShowAll] = React.useState(false)
-      const [setupTotal, setSetupTotal] = React.useState(0)
       const markerRef = React.useRef(null)
-
-      const load = React.useCallback(async () => {
-        try {
-          const response = await fetch(ENDPOINT, { cache: 'no-store' })
-          if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          const payload = await response.json()
-          if (!payload || !payload.ok) throw new Error('bad payload')
-          setData(payload)
-          setError(null)
-        } catch (err) {
-          setError(String((err && err.message) || err))
-        }
-      }, [])
-
-      const fetchSetup = React.useCallback(async (includeAll) => {
-        try {
-          const response = await fetch(`${SETUP_ENDPOINT}${includeAll ? '?all=1' : ''}`, { cache: 'no-store' })
-          if (!response.ok) return { entries: [], total: 0 }
-          const payload = await response.json()
-          return {
-            entries: payload && Array.isArray(payload.entries) ? payload.entries : [],
-            total: Number(payload && payload.total) || 0,
-          }
-        } catch {
-          return { entries: [], total: 0 }
-        }
-      }, [])
-
-      React.useEffect(() => {
-        load()
-        const poll = setInterval(load, POLL_MS)
-        const beat = setInterval(() => setTick((value) => value + 1), TICK_MS)
-        return () => {
-          clearInterval(poll)
-          clearInterval(beat)
-        }
-      }, [load])
 
       const toggle = React.useCallback((key) => {
         setCollapsed((prev) => {
@@ -945,37 +858,33 @@ window.__ModuleLoader__.load({
         })
       }, [])
 
-      const [handoff, setHandoff] = React.useState(false)
-      // The full setup form lives in Settings -> Plugins (there is room to read
-      // there). This card only hands the focus over; if the settings dialog is
-      // out of reach the card falls back to its own compact form.
-      const openSetup = React.useCallback(async (focusRef) => {
-        if (await requestSetupTab(focusRef)) { setHandoff(true); return }
-        setShowAll(false)
-        setSetup({ entries: null, focusRef: focusRef || null })
-        const result = await fetchSetup(false)
-        setSetupTotal(result.total)
-        setSetup({ entries: result.entries, focusRef: focusRef || null })
-      }, [fetchSetup])
+      const load = React.useCallback(async () => {
+        try {
+          const response = await fetch(ENDPOINT, { cache: 'no-store' })
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const payload = await response.json()
+          if (!payload || !payload.ok) throw new Error('bad payload')
+          rememberSharedSetup(payload.sharedSetup)
+          setData(payload)
+          setError(null)
+        } catch (err) {
+          setError(String((err && err.message) || err))
+        }
+      }, [])
 
-      const toggleSetupScope = React.useCallback(async () => {
-        const next = !showAll
-        setShowAll(next)
-        const result = await fetchSetup(next)
-        setSetupTotal(result.total)
-        setSetup((prev) => (prev ? { ...prev, entries: result.entries, focusRef: null } : prev))
-      }, [showAll, fetchSetup])
+      const [handoff, setHandoff] = React.useState(false)
+      // One credential page exists, and it lives in Settings -> Plugins where
+      // there is room to read. This card only hands the focus over; nothing is
+      // duplicated here, so the two plugins cannot drift apart.
+      const openSetup = React.useCallback(async (focusRef) => {
+        if (await requestSetupTab(focusRef)) setHandoff(true)
+      }, [])
 
       React.useEffect(() => {
         if (!handoff) return undefined
         const timer = setTimeout(() => setHandoff(false), 4000)
         return () => clearTimeout(timer)
       }, [handoff])
-
-      const closeSetup = React.useCallback(() => {
-        setSetup(null)
-        load()
-      }, [load])
 
       // The card is fixed above the footer, so it cannot inherit the
       // sidebar's width. Measure the sidebar shell and re-measure whenever it
@@ -1068,60 +977,45 @@ window.__ModuleLoader__.load({
       }, children)
 
       const cards = []
-      if (setup) {
-        cards.push(h('div', { key: 'setup', style: S.box },
-          setup.entries
-            ? h(SetupView, {
-              t,
-              entries: setup.entries,
-              onBack: closeSetup,
-              focusRef: setup.focusRef,
-              showAll,
-              total: setupTotal,
-              onToggleShowAll: toggleSetupScope,
-            })
-            : h('div', { style: S.muted }, t('card.loading'))))
-      } else {
-        if (planRows.length > 0) {
-          const children = []
-          planRows.forEach((row, index) => {
-            if (index > 0) children.push(h('div', { key: `sep-${row.id}`, style: S.sep }))
-            children.push(h(PlanSection, { key: row.id, row, t, now }))
-          })
-          cards.push(section('plan', t('card.planTitle'),
-            h('span', { style: { display: 'inline-flex', gap: '6px', alignItems: 'center' } },
-              stamp ? h('span', { style: S.stamp }, stamp) : null,
-              SHOW_SETUP_GEAR
-                ? h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => openSetup() }, '⚙')
-                : null),
-            children))
-        }
-        if (balanceRows.length > 0) {
-          cards.push(section('balance', t('card.balanceTitle'),
-            planRows.length > 0 ? null : (stamp ? h('span', { style: S.stamp }, stamp) : null),
-            balanceRows.map((row) => h(BalanceRow, { key: row.id, row, t, now, onSetup: openSetup }))))
-        }
-        if (thirdParty.length > 0) {
-          cards.push(section('third', t('card.thirdTitle'), null,
-            thirdParty.map((item) => h(ThirdPartyRow, { key: item.id, item }))))
-        }
-        if (cards.length === 0) {
-          // An empty card used to be a single faint line that looked like a
-          // broken / unexpandable widget. Make the empty state actionable.
-          cards.push(h('div', { key: 'empty', style: S.box },
-            h('div', { style: S.muted }, data ? t('card.empty') : t('card.loading')),
-            data ? h('div', { style: S.mutedSmall }, t('card.emptyHelp')) : null,
-            data ? h('div', { style: { marginTop: '6px' } },
-              h('button', { type: 'button', style: S.button, onClick: () => openSetup() }, t('card.setup')))
-              : null))
-        }
-        if (error) {
-          cards.push(h('div', { key: 'err', style: S.box }, h('div', { style: S.err }, `${t('card.refreshErr')}${error}`)))
-        }
-        if (handoff) {
-          cards.push(h('div', { key: 'handoff', style: S.box },
-            h('div', { style: S.muted }, t('setup.handoff'))))
-        }
+      if (planRows.length > 0) {
+        const children = []
+        planRows.forEach((row, index) => {
+          if (index > 0) children.push(h('div', { key: `sep-${row.id}`, style: S.sep }))
+          children.push(h(PlanSection, { key: row.id, row, t, now }))
+        })
+        cards.push(section('plan', t('card.planTitle'),
+          h('span', { style: { display: 'inline-flex', gap: '6px', alignItems: 'center' } },
+            stamp ? h('span', { style: S.stamp }, stamp) : null,
+            SHOW_SETUP_GEAR
+              ? h('button', { type: 'button', style: S.gear, title: t('card.setup'), onClick: () => openSetup() }, '⚙')
+              : null),
+          children))
+      }
+      if (balanceRows.length > 0) {
+        cards.push(section('balance', t('card.balanceTitle'),
+          planRows.length > 0 ? null : (stamp ? h('span', { style: S.stamp }, stamp) : null),
+          balanceRows.map((row) => h(BalanceRow, { key: row.id, row, t, now, onSetup: openSetup }))))
+      }
+      if (thirdParty.length > 0) {
+        cards.push(section('third', t('card.thirdTitle'), null,
+          thirdParty.map((item) => h(ThirdPartyRow, { key: item.id, item, t }))))
+      }
+      if (cards.length === 0) {
+        // An empty card used to be a single faint line that looked like a
+        // broken / unexpandable widget. Make the empty state actionable.
+        cards.push(h('div', { key: 'empty', style: S.box },
+          h('div', { style: S.muted }, data ? t('card.empty') : t('card.loading')),
+          data ? h('div', { style: S.mutedSmall }, t('card.emptyHelp')) : null,
+          data ? h('div', { style: { marginTop: '6px' } },
+            h('button', { type: 'button', style: S.button, onClick: () => openSetup() }, t('card.setup')))
+            : null))
+      }
+      if (error) {
+        cards.push(h('div', { key: 'err', style: S.box }, h('div', { style: S.err }, `${t('card.refreshErr')}${error}`)))
+      }
+      if (handoff) {
+        cards.push(h('div', { key: 'handoff', style: S.box },
+          h('div', { style: S.muted }, t('setup.handoff'))))
       }
 
       const style = anchor && !anchor.hidden
@@ -1158,60 +1052,336 @@ window.__ModuleLoader__.load({
       return false
     }
 
-    /** The same setup form, with room to read (Settings → Plugins). */
-    function BalanceSettingsTab(props) {
-      const ctx = props.slotContext
-      const t = useTranslator(ctx)
+    /**
+     * Does the peer plugin already draw the shared credential page? Its answer
+     * rides on state.json, but the tab has to be registered before that
+     * arrives, so the last answer is cached here and the first boot asks the
+     * host once. Duplicate tabs are the failure mode this prevents.
+     */
+    const SHARED_KEY = 'dsh-balance-display:shared-setup'
+
+    function readSharedSetup() {
+      try {
+        const text = window.localStorage.getItem(SHARED_KEY)
+        return text ? JSON.parse(text) : null
+      } catch {
+        return null
+      }
+    }
+
+    function rememberSharedSetup(state) {
+      if (!state || typeof state !== 'object') return
+      try { window.localStorage.setItem(SHARED_KEY, JSON.stringify(state)) } catch { /* private mode */ }
+    }
+
+    /** One question to the host: who owns the shared page right now. */
+    async function loadSharedSetup() {
+      const response = await fetch(PEERS_ENDPOINT, { cache: 'no-store' })
+      const body = await response.json().catch(() => null)
+      return (body && body.sharedSetup) || null
+    }
+
+    // ---------- the shared credential page (Settings → Plugins) ----------
+    /**
+     * This page is deliberately one thing: the credentials that unlock usage no
+     * API key can read. Its content matches dsh-model-panel's page word for word
+     * so the two plugins show the same screen — and when that plugin is loaded
+     * it owns the tab, so this copy is never registered (see `sharedSetup` in
+     * state.json and `apply` below).
+     */
+
+    function dayText(value) {
+      const ms = Number(value)
+      if (!Number.isFinite(ms) || ms <= 0) return ''
+      try {
+        return new Date(ms).toLocaleDateString()
+      } catch {
+        return ''
+      }
+    }
+
+    /** What a stored credential bought us: plan, used bar, period end. */
+    function usageLine(entry, t) {
+      if (!entry.set) return null
+      if (entry.status === 'error') {
+        const detail = String(entry.detail || '')
+        const expired = /expired|401|403|notlogined|登录|失效/i.test(detail)
+        return h('div', { style: S.usageErr }, expired ? t('set.expired') : (detail || t('set.hidden')))
+      }
+      if (typeof entry.amount === 'number' && Number.isFinite(entry.amount)) {
+        const bars = (Array.isArray(entry.windows) ? entry.windows : [])
+          .filter((win) => Number.isFinite(win && win.remainPct))
+        return h('div', { style: S.usage },
+          h('span', { style: S.usagePlan }, money(entry.amount, entry.currency)),
+          bars.length
+            ? h('span', { style: S.usageWins }, bars.map((win, index) => h('span', {
+              key: String(win.label || index),
+              style: S.usageWin,
+            },
+              h('span', { style: S.usageWLabel }, String(win.label || '')),
+              h('span', { style: S.usagePct }, pctText(Math.max(0, Math.min(100, 100 - win.remainPct)))))))
+            : null)
+      }
+      const used = Number.isFinite(entry.usedPct) ? Math.max(0, Math.min(100, entry.usedPct)) : null
+      const until = dayText(entry.endAt)
+      return h('div', { style: S.usage },
+        entry.plan ? h('span', { style: S.usagePlan }, String(entry.plan)) : null,
+        used === null ? null : h('span', { style: S.usageBar, title: t('set.used', { p: pctText(used) }) },
+          h('span', { style: { ...S.usageBarFill, width: `${used}%`, ...(used >= 90 ? S.usageBarLow : null) } })),
+        used === null ? null : h('span', { style: S.usagePct }, pctText(used)),
+        until ? h('span', { style: S.usageUntil }, t('set.until', { d: until })) : null,
+        used === null && !entry.plan && !until ? h('span', { style: S.usageUntil }, t('set.hidden')) : null)
+    }
+
+    async function settingsRequest() {
+      const response = await fetch(SETTINGS_ENDPOINT, { cache: 'no-store' })
+      const body = await response.json().catch(() => null)
+      if (!body || typeof body !== 'object' || body.ok === false) {
+        throw new Error(String((body && body.error) || `HTTP ${response.status}`))
+      }
+      return Array.isArray(body.entries) ? body.entries : []
+    }
+
+    async function secretRequest(id, action, value, ref) {
+      const payload = { id, action }
+      if (value !== undefined) payload.value = value
+      if (ref) payload.ref = ref
+      try {
+        const response = await fetch(SECRET_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const body = await response.json().catch(() => null)
+        return body || { ok: false, error: `HTTP ${response.status}` }
+      } catch (err) {
+        return { ok: false, error: String((err && err.message) || err) }
+      }
+    }
+
+    /**
+     * Guarded boundary: a render crash in the page must degrade to a retry
+     * line, never blank the settings dialog. Hosts without `React.Component`
+     * (the Node-side layout test stubs React) simply get the page itself.
+     */
+    const SharedTabBoundary = typeof React.Component === 'function'
+      ? class SharedTabBoundary extends React.Component {
+        constructor(props) {
+          super(props)
+          this.state = { crashed: false, detail: '' }
+        }
+
+        static getDerivedStateFromError(error) {
+          return { crashed: true, detail: String((error && error.message) || error) }
+        }
+
+        componentDidCatch(error) {
+          try { console.warn('[dsh-balance-display] settings tab crashed:', error) } catch { /* best effort */ }
+        }
+
+        render() {
+          const t = typeof this.props.t === 'function' ? this.props.t : (key) => String(key)
+          if (!this.state.crashed) return h(CookieUsageTab, this.props)
+          return h('div', { style: S.page },
+            h('div', { style: S.noteBad }, `${t('set.err')}: ${this.state.detail}`),
+            h('button', {
+              type: 'button',
+              style: { ...S.button, marginTop: '6px' },
+              onClick: () => this.setState({ crashed: false, detail: '' }),
+            }, t('set.retry')))
+        }
+      }
+      : (props) => h(CookieUsageTab, props)
+
+    /**
+     * The page itself. Every row is one credential; a provider that owns
+     * several declares them as a group so the page prints one heading.
+     */
+    function CookieUsageTab(props) {
+      const t = typeof (props && props.t) === 'function' ? props.t : (key) => String(key)
       const [entries, setEntries] = React.useState(null)
-      const [total, setTotal] = React.useState(0)
-      const [showAll, setShowAll] = React.useState(false)
-      const [focus, setFocus] = React.useState(() => {
-        try {
-          const pending = window.localStorage.getItem(SETUP_PENDING_KEY)
-          if (pending !== null) window.localStorage.removeItem(SETUP_PENDING_KEY)
-          return pending || null
-        } catch {
-          return null
-        }
-      })
-      React.useEffect(() => {
-        let alive = true
-        fetch(`${SETUP_ENDPOINT}${showAll ? '?all=1' : ''}`, { cache: 'no-store' })
-          .then((response) => response.json())
-          .then((payload) => {
-            if (!alive) return
-            setEntries(payload && Array.isArray(payload.entries) ? payload.entries : [])
-            setTotal(Number(payload && payload.total) || 0)
+      const [error, setError] = React.useState('')
+      const [editing, setEditing] = React.useState('')
+      const [draft, setDraft] = React.useState('')
+      const [busy, setBusy] = React.useState('')
+      const [note, setNote] = React.useState(null)
+      const [drop, setDrop] = React.useState(false)
+
+      const load = React.useCallback(() => {
+        setError('')
+        settingsRequest()
+          .then((list) => setEntries(list))
+          .catch((err) => {
+            setError(String((err && err.message) || err))
+            setEntries([])
           })
-          .catch(() => { if (alive) setEntries([]) })
-        return () => { alive = false }
-      }, [showAll])
-
-      // "Back" used to only clear the focused form, which did nothing when no
-      // form was open — the dialog stayed up with no reachable close control.
-      const close = React.useCallback(() => {
-        const ui = GLOBAL_UI && GLOBAL_UI.settings
-        for (const method of ['close', 'closeSettings', 'dismiss']) {
-          if (ui && typeof ui[method] === 'function') {
-            try { ui[method]() } catch { /* keep the fallback below */ }
-            break
-          }
-        }
-        setFocus(null)
       }, [])
+      React.useEffect(load, [load])
 
-      if (!entries) return h('div', { style: S.muted }, t('card.loading'))
-      return h('div', { style: { maxWidth: '520px', fontSize: '12px' } },
-        h(SetupView, {
-          t,
-          entries,
-          focusRef: focus,
-          showAll,
-          total,
-          backLabel: t('setup.close'),
-          onToggleShowAll: () => { setFocus(null); setShowAll((value) => !value) },
-          onBack: close,
-        }))
+      function merge(entry) {
+        if (!entry) return
+        setEntries((prev) => (prev || []).map((item) => (
+          item.ref === entry.ref ? Object.assign({}, item, entry) : item
+        )))
+      }
+
+      async function save(entry) {
+        setBusy(entry.ref)
+        setNote(null)
+        const body = await secretRequest(entry.id, 'save', draft, entry.ref)
+        setBusy('')
+        if (body.ok) {
+          merge(body.entry)
+          setEditing('')
+          setDraft('')
+          let got = ''
+          if (body.imported && body.imported.count) {
+            got = ' · ' + t('set.imported', { n: String(body.imported.count) })
+            const aside = Number(body.imported.filteredOut) || 0
+            if (aside > 0) got += t('set.filtered', { n: String(aside) })
+          }
+          setNote({ ok: true, text: t('set.saved') + got })
+        } else {
+          setNote({ ok: false, text: body.error || t('set.failed') })
+        }
+      }
+
+      async function clear(entry) {
+        setBusy(entry.ref)
+        setNote(null)
+        const body = await secretRequest(entry.id, 'clear', undefined, entry.ref)
+        setBusy('')
+        if (body.ok) {
+          merge(body.entry)
+          setNote({ ok: true, text: t('set.cleared') })
+        } else {
+          setNote({ ok: false, text: body.error || t('set.failed') })
+        }
+      }
+
+      /** A dropped export is a convenience; pasting stays the documented path. */
+      function loadFile(file) {
+        if (!file) return
+        const reader = new FileReader()
+        reader.onload = () => {
+          const text = String(reader.result || '').trim()
+          if (!text) {
+            setNote({ ok: false, text: t('set.pasteEmpty') })
+            return
+          }
+          setDraft(text)
+          setNote({ ok: true, text: t('set.pasteLoaded') })
+        }
+        reader.onerror = () => setNote({ ok: false, text: t('set.pasteEmpty') })
+        reader.readAsText(file)
+      }
+
+      function renderCard(entry) {
+        const open = editing === entry.ref
+        const working = busy === entry.ref
+        const placeholder = entry.placeholder
+          || (entry.type === 'key'
+            ? t('set.keyPlaceholder')
+            : entry.type === 'text' ? t('set.textPlaceholder') : t('set.placeholder'))
+        return h('div', { key: entry.ref, style: S.card },
+          h('div', { style: S.cardTop },
+            h('span', { style: S.cardName }, String(entry.label || entry.id)),
+            entry.optional ? h('span', { style: S.cardOpt }, t('set.optional')) : null,
+            h('span', { style: entry.set ? { ...S.pill, ...S.pillOn } : S.pill },
+              entry.set ? t('set.stored') : t('set.missing'))),
+          h('div', { style: S.cardMeta },
+            h('code', { style: S.cardCode }, String(entry.ref || '')),
+            entry.consoleUrl
+              ? h('a', {
+                href: entry.consoleUrl,
+                target: '_blank',
+                rel: 'noreferrer noopener',
+                style: { color: 'var(--dsw-alias-brand-primary, #ffb366)' },
+              }, t('set.console'))
+              : null),
+          entry.hint ? h('div', { style: S.hintLine }, String(entry.hint)) : null,
+          usageLine(entry, t),
+          open
+            ? h('div', null,
+              h('textarea', {
+                rows: entry.type === 'cookie' ? 6 : 1,
+                style: drop ? { ...S.input, ...S.inputOver } : S.input,
+                spellCheck: false,
+                autoComplete: 'off',
+                placeholder,
+                value: draft,
+                onChange: (event) => setDraft(event.target.value),
+                onDragOver: entry.type === 'cookie'
+                  ? (event) => { event.preventDefault(); setDrop(true) }
+                  : undefined,
+                onDragLeave: entry.type === 'cookie' ? () => setDrop(false) : undefined,
+                onDrop: entry.type === 'cookie'
+                  ? (event) => {
+                    event.preventDefault()
+                    setDrop(false)
+                    const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]
+                    loadFile(file)
+                  }
+                  : undefined,
+              }),
+              entry.type === 'cookie' ? h('div', { style: S.pasteHint }, t('set.pasteHint')) : null,
+              h('div', { style: S.actions },
+                h('button', {
+                  type: 'button',
+                  style: S.buttonPrimary,
+                  disabled: working || !draft.trim(),
+                  onClick: () => save(entry),
+                }, working ? t('set.saving') : t('set.save')),
+                h('button', {
+                  type: 'button',
+                  style: S.button,
+                  onClick: () => { setEditing(''); setDraft('') },
+                }, t('set.cancel')))
+            )
+            : h('div', { style: S.actions },
+              h('button', {
+                type: 'button',
+                style: S.buttonPrimary,
+                onClick: () => { setEditing(entry.ref); setDraft(''); setNote(null) },
+              }, entry.set ? t('set.update') : t('set.add')),
+              entry.set
+                ? h('button', {
+                  type: 'button',
+                  style: S.button,
+                  disabled: working,
+                  onClick: () => clear(entry),
+                }, t('set.clear'))
+                : null))
+      }
+
+      /** Rows arrive in host order; a new group prints one heading. */
+      function renderRows(list) {
+        const out = []
+        let lastGroup = null
+        for (const entry of list) {
+          const group = entry.group ? String(entry.groupLabel || entry.group) : null
+          if (group && group !== lastGroup) {
+            out.push(h('div', { key: `g:${group}`, style: S.group }, group))
+            lastGroup = group
+          }
+          out.push(renderCard(entry))
+        }
+        return out
+      }
+
+      return h('div', { style: S.page },
+        h('div', { style: S.pageHead },
+          h('div', { style: S.pageTitle }, t('settings.tabTitle')),
+          h('button', { type: 'button', style: S.button, onClick: load }, t('set.retry'))),
+        h('div', { style: S.pageSub }, t('set.subtitle')),
+        error
+          ? h('div', { style: S.noteBad }, `${t('set.err')}: ${error}`)
+          : null,
+        note ? h('div', { style: note.ok ? S.note : S.noteBad }, note.text) : null,
+        entries === null ? h('div', { style: S.emptyLine }, t('card.loading')) : null,
+        entries && entries.length === 0 ? h('div', { style: S.emptyLine }, t('set.none')) : null,
+        entries ? renderRows(entries) : null,
+        h('div', { style: S.pasteHint }, t('set.foot')))
     }
 
     /** Every contribution is guarded so one failure cannot break the loader. */
@@ -1259,16 +1429,37 @@ window.__ModuleLoader__.load({
             locale: NAMESPACE,
           }, (props) => h(BalanceWidget, { ...props, slotContext: withSlots }))) })
 
-          // Settings → Plugins → Balance display: the same setup view, with
-          // room to read. This is the only configuration entry point; the
-          // card itself is a read-only display.
-          guard('settings tab', () => { withSlots.slots.inject('settings.plugins.tab', () => withSlots.slots.register({
-            name: 'settings.plugins.tab',
-            id: 'dsh-balance-display',
-            order: 30,
-            label: () => translate(readLocale(withSlots), 'settings.tabTitle'),
-            locale: NAMESPACE,
-          }, (props) => h(BalanceSettingsTab, { ...props, slotContext: withSlots }))) })
+          // Settings → Plugins: the shared credential page. When the peer
+          // plugin is loaded it already draws this exact page, so registering
+          // it here would show two identical tabs — the host answer comes from
+          // state.json's `sharedSetup.ownsSetupTab`, and when it is true the
+          // page is skipped instead of duplicated.
+          guard('settings tab', () => {
+            const myLocale = readLocale(withSlots)
+            const own = () => withSlots.slots.inject('settings.plugins.tab', () => withSlots.slots.register({
+              name: 'settings.plugins.tab',
+              id: 'dsh-balance-display',
+              order: 30,
+              label: () => translate(myLocale, 'settings.tabTitle'),
+              locale: NAMESPACE,
+            }, (props) => h(SharedTabBoundary, {
+              ...props,
+              t: (key, vars) => translate(myLocale, key, vars),
+              slotContext: withSlots,
+            })))
+            const peer = readSharedSetup()
+            if (peer) {
+              if (!peer.ownsSetupTab) own()
+              return
+            }
+            // First boot on this machine: ask the host once, then remember.
+            loadSharedSetup()
+              .then((state) => {
+                rememberSharedSetup(state)
+                if (!state || !state.ownsSetupTab) own()
+              })
+              .catch(() => own())
+          })
         }
 
         scoped(ctx, ['locale'], 'locale', (withLocale) => {
