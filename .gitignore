@@ -1,0 +1,34 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Dependencies
+node_modules/
+
+# Local plugin data: today's baseline and the scraped schedules of THIS machine.
+*.log
+*.local.json
+.dsh-balance-display/
+
+# Never commit a real credential, a backup or an npm tarball by accident.
+.credentials.yaml
+.env
+.env.*
+*.pem
+*.key
+*.bak
+*.orig
+*.tmp
+*.tgz
+coverage/
+.idea/
+.vscode/
+
+# Publish tooling (never commit the GitHub token or its folder)
+.publish-secrets/
+.publish-secrets
+token.txt
+*.token
+repo/
+_publish/

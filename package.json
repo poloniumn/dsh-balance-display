@@ -1,0 +1,68 @@
+{
+  "name": "dsh-balance-display",
+  "version": "2.1.0",
+  "description": "Sidebar card that shows the wallet balance and Token Plan usage of every model provider enabled in DSH, and hides the rest.",
+  "type": "module",
+  "license": "MIT",
+  "author": "dsh-balance-display contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/poloniumn/dsh-balance-display.git"
+  },
+  "homepage": "https://github.com/poloniumn/dsh-balance-display#readme",
+  "bugs": {
+    "url": "https://github.com/poloniumn/dsh-balance-display/issues"
+  },
+  "icon": "./icon.svg",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "balance",
+    "token-plan",
+    "sidebar"
+  ],
+  "engines": {
+    "dsh": ">=0.2.0-rc.2",
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-balance-qwen-cookie": "./tools/qwen-cookie.mjs"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "tools/*.mjs",
+    "tools/lib/*.mjs",
+    "README.md",
+    "README_EN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE",
+    "assets/banner.svg",
+    "images/*",
+    "docs/*.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node tools/run-tests.mjs",
+    "test": "node tools/run-tests.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  }
+}
