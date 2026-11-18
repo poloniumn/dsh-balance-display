@@ -51,8 +51,8 @@
     "docs/*.md"
   ],
   "scripts": {
-    "check": "node --check index.js && node --check client.js && node --test test/",
-    "test": "node --test test/"
+    "check": "node --check index.js && node --check client.js && node tools/run-tests.mjs",
+    "test": "node tools/run-tests.mjs"
   },
   "dsh": {
     "bundle": {
