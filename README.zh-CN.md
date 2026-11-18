@@ -12,9 +12,23 @@ Token Plan 用量，以及第三方编程渠道的额度。没启用的服务商
 | --- | --- | --- |
 | **Token Plan** | Qwen · Lite、MIMO · Lite、OpenCode · Go、Z.ai、MiniMax… | 厂商的套餐接口 / 控制台会话 |
 | **账户余额** | DeepSeek、MiMo、Kimi、SiliconFlow… | 各厂商自己的余额接口（鉴权、端点数与金额单位各不相同） |
-| **第三方渠道** | WorkBuddy、Trae、Qoder | 已安装的 `dsh-connect` 插件 |
+| **第三方渠道** | WorkBuddy、Trae、Qoder · LobsterAI、Qoder 中国版、TRAE、Cline、Loomy、Raccoon、MiniMax Code、ZCode、Gemini | 已安装的 `dsh-connect` 插件，以及 our Free Model 的 **EAC router** 页 |
 
 三个区块默认全部折叠，点击标题单独展开或收起；折叠状态按浏览器记住，三个同时收起也是正常状态。卡片标题栏没有设置齿轮，配置入口在 **设置 → 插件 → 余额显示**；缺凭据的行仍可点击，卡片无数据时也有「配置密钥」按钮，保证设置对话框不可达时仍能进入配置。
+
+## 与 dsh-model-panel 共用同一个设置页
+
+两个插件读的是同一批控制台 Cookie，所以配置页只有一份。宿主侧读本机 profile 的
+`package.json`（`dependencies` 与 `dsh.profile.bundles`）判断 `dsh-model-panel`
+是否真的在加载：
+
+* **装了并且已加载** → 那个插件注册的设置页就是唯一入口，本插件不再注册第二个
+  标签页，避免出现两个一模一样的「Cookie 用量」页。
+* **没装 / 装了没启用** → 本插件自己注册同一位置（`设置 → 插件`）的页面，内容与
+  文案和那边一致，照样能用。
+
+判断结果从 `/dsh-balance/peers.json` 拿到（`state.json` 里也带一份
+`sharedSetup`），缓存进 `localStorage`，所以只在首次启动问一次。
 
 细节：
 
@@ -28,6 +42,10 @@ Token Plan 用量，以及第三方编程渠道的额度。没启用的服务商
   Plan FAQ。
 * **高峰时段** — DeepSeek、MiMo 余额后的绿点/红点表示当前是否高峰期，悬停可看时
   段。
+* **EAC router 积分** — our Free Model 的 EAC router 页里每个渠道各占一行，显示还
+  剩多少：`剩余积分 1.2K`、`剩余余额（USD） $3.50`、`剩余 Token`，或 `剩余配额` 加分
+  桶进度条。Gemini 的配额绝不求和成余额（它的 `total` 是跨模型池的百分比相加），没
+  配账号的渠道直接不出现，而不是显示一个 0。
 
 ## 安装
 
@@ -95,7 +113,8 @@ npx dsh-balance-qwen-cookie --remove
 
 只看你 DSH 配置里真正启用的：插件读取 `llm-pi-ai` 配置项的 `providers`（含
 inherited / override 层），保留没有 `disabled` 的条目。DSH 登录本身提供
-`deepseek-account`；装了 `dsh-connect` 时才会有第三方渠道行。
+`deepseek-account`；装了 `dsh-connect` 时才会有第三方渠道行，装了 our Free Model 时
+才会有它 EAC router 各渠道的积分行。
 
 服务商 id 到适配器的映射在 [lib/registry.js](lib/registry.js)；没有适配器的服务
 商仍然会以一个控制台链接出现。要加一家厂商，看
@@ -129,6 +148,13 @@ inherited / override 层），保留没有 `disabled` 的条目。DSH 登录本�
 订阅 Key 和开放平台 Key 都能出数。此前只显示控制台链接的 Z.ai / OpenRouter 现在
 能直接读到配额与余额。
 
+EAC router 的渠道是另一种形态：our Free Model 根本没给渠道积分开 HTTP 路由，所以
+[lib/ofm-credits.js](lib/ofm-credits.js) 走它自己也在用的 `usage.badge`——通过宿主
+的进程内 Connection（`createPeer` + `createSharedFetchHandler('/api')`），因为裸的
+回环 `fetch` 打 `/api/*` 不带会话，会被网关直接拒绝。选 `usage.badge` 而不是
+`credits.balances`，是因为前者有宿主缓存、只含启用账号，卡片的分钟级轮询不会把
+上游请求数放大。
+
 仍**未**移植的是依赖本机 OAuth 登录文件、扫码或 IAM 签名的几家（Grok、Codex、
 GitHub Copilot、火山方舟、Command Code）——它们要用到宿主的登录与凭据记录服务，
 不是一次 HTTP 请求能解决的。
@@ -141,8 +167,9 @@ GitHub Copilot、火山方舟、Command Code）——它们要用到宿主的登
 * 写入接口（`POST /dsh-balance/secret`）只接收一个值，校验后写入 DSH 凭据库；从
   不返回明文，配置页只能看到 `oc_…9F (41)` 这样的掩码。
 * 除你配置的厂商接口外，插件只会访问：两个公开文档页（DeepSeek 定价、MiMo 套餐
-  FAQ，每天一次）、Qwen 模型目录（每天一次，在折扣时段开始时）、以及本机的
-  `dsh-connect`。
+  FAQ，每天一次）、Qwen 模型目录（每天一次，在折扣时段开始时）、本机的
+  `dsh-connect`，以及 our Free Model 自己的 `/api/channel-pack`（走宿主进程内
+  Connection，不经过网络，且只读它已经在缓存的 `usage.badge`）。
 
 ## 数据文件
 
@@ -153,6 +180,7 @@ GitHub Copilot、火山方舟、Command Code）——它们要用到宿主的登
 | `baseline.json` | 每行的当日基准，用于计算「今日减少」 |
 | `schedules.json` | 从公开页面抓取的高峰 / 夜间时段 |
 | `qwen-discount.json` | Qwen 折扣标签及其读取时间 |
+| `last-state.json` | 上一次真正拿到数据的快照：凭据库还没就绪时用它顶上，不会写坏缓存 |
 
 删掉这个目录即恢复初始状态。
 

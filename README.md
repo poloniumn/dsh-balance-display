@@ -14,7 +14,7 @@ hide by hand.
 | --- | --- | --- |
 | **Token Plan** | Qwen · Lite, MIMO · Lite, OpenCode · Go, Z.ai, MiniMax… | the vendor's plan API / console session |
 | **Balances** | DeepSeek, MiMo, Kimi, SiliconFlow… | each vendor's own endpoint (auth, endpoint count and units differ) |
-| **Third-party** | WorkBuddy, Trae, Qoder | the `dsh-connect` plugin, when installed |
+| **Third-party** | WorkBuddy, Trae, Qoder · LobsterAI, Qoder 中国版, TRAE, Cline, Loomy, Raccoon, MiniMax Code, ZCode, Gemini | the `dsh-connect` plugin and our Free Model's **EAC router** page, each when installed |
 
 All three sections start folded; click a title to open just that one. The state
 is remembered per browser, and folding all three at once is allowed. The card has
@@ -22,6 +22,21 @@ no settings gear in its header — configuration lives in **Settings → Plugins
 Balance display**. A row missing a credential stays clickable, and an empty card
 offers a **Configure key** button, so setup is still reachable if the settings
 dialog is unavailable.
+
+## One settings page, shared with dsh-model-panel
+
+Both plugins read the same console cookies, so the credential page exists once.
+The host reads the local profile's `package.json` (`dependencies` and
+`dsh.profile.bundles`) to learn whether `dsh-model-panel` is actually loaded:
+
+* **Installed and bundled** — that plugin's page is the only tab; this plugin
+  registers nothing, so two identical pages never appear side by side.
+* **Absent or not bundled** — this plugin registers the page in the same place
+  (`Settings → Plugins`) with the same content and wording, so setup works
+  either way.
+
+The answer comes from `/dsh-balance/peers.json` (`state.json` carries a
+`sharedSetup` copy too) and is cached in `localStorage`, so it is asked once.
 
 A few details that make the card readable at a glance:
 
@@ -39,6 +54,11 @@ A few details that make the card readable at a glance:
   MiMo's from the public Token Plan FAQ.
 * **Peak hours** — the green/red dot after DeepSeek and MiMo balances means
   off-peak / peak right now; hovering says when the next switch is.
+* **EAC router credits** — each channel of our Free Model's EAC router page gets
+  a row with what is left: `剩余积分 1.2K`, `剩余余额（USD） $3.50`, `剩余 Token`,
+  or `剩余配额` with the package bar. Gemini's quota is never summed into a
+  balance (its `total` adds percentages across model pools), and a channel
+  without configured accounts is left out instead of showing a zero.
 
 ## Install
 
@@ -115,7 +135,8 @@ Only what your DSH profile actually enables. The plugin reads the `providers`
 record of the `llm-pi-ai` config entry (and its inherited/override layers) and
 keeps the entries that are not `disabled`. The DSH login itself supplies
 `deepseek-account`; the `dsh-connect` plugin supplies the third-party rows when
-it is installed.
+it is installed, and our Free Model supplies the credits of its **EAC router**
+channels when it is installed.
 
 Provider ids map to adapters in [lib/registry.js](lib/registry.js); a provider
 without an adapter still appears as a plain console link. To add a vendor, see
@@ -152,6 +173,15 @@ back to the Moonshot wallet, so a key from either platform produces a row.
 Z.ai and OpenRouter, which used to be console links only, now read real quota
 and balance data.
 
+The EAC router channels are a different animal: our Free Model exposes no HTTP
+route for them at all, so [lib/ofm-credits.js](lib/ofm-credits.js) calls the
+same `usage.badge` method it calls itself — through the host's in-process
+Connection (`createPeer` + `createSharedFetchHandler('/api')`), because a bare
+loopback `fetch` to `/api/*` carries no session and is refused by the gateway.
+`usage.badge` is preferred over `credits.balances` because it is cached by the
+host and only covers enabled accounts, so the card's minute-long poll does not
+multiply upstream requests.
+
 Vendors that need a local OAuth file, a QR login or IAM request signing (Grok,
 Codex, GitHub Copilot, Volcengine, Command Code) are intentionally not ported:
 they depend on the host's login / credential-record services.
@@ -169,7 +199,9 @@ they depend on the host's login / credential-record services.
 * Nothing is fetched from a third party to make the card work except: the vendor
   APIs you configured, two public documentation pages (DeepSeek pricing, MiMo
   plan FAQ) once a day, the Qwen model catalog once a day at the discount
-  window's start, and `dsh-connect` on loopback.
+  window's start, `dsh-connect` on loopback, and our Free Model's own
+  `/api/channel-pack` through the host's in-process Connection (never over the
+  network, and only the `usage.badge` read it already caches).
 
 ## Data files
 
@@ -192,15 +224,23 @@ npm test    # node --test, no dependencies
 Layout:
 
 ```
-index.js              host half: routes, provider scan, row building
-client.js             sidebar card: sections, setup view, settings tab
+index.js              host half: assembles the pieces below, exports four routes
+client.js             sidebar card: sections, shared settings tab
 lib/providers/*.js    one file per vendor adapter
 lib/registry.js       the adapter list
+lib/rows.js           one provider -> one row (credential probe, extras, meta)
+lib/collect.js        the enabled-provider scan and the whole state payload
+lib/snapshot.js       answer cache, stale-while-revalidate, on-disk seed
+lib/routes.js         the loopback fence and the three JSON handlers
+lib/cookie-setup.js   the credential page, host half (paste, import, validate)
+lib/cookie-import.js  Cookie-Editor / Netscape / header parsing
+lib/peers.js          is dsh-model-panel loaded, i.e. who owns the settings tab
 lib/secrets.js        credential store wrapper (read / write / clear / mask)
 lib/baseline.js       today's decrease accumulator
 lib/schedules.js      daily scrape of the public pricing pages
 lib/qwen-discount.js  Qwen night-discount cache
 lib/third-party.js    dsh-connect channel reader
+lib/ofm-credits.js    our Free Model EAC router credit reader
 lib/http.js           loopback fence + tiny JSON helpers
 tools/                the cookie CLI
 ```
