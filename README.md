@@ -1,278 +1,255 @@
-# Balance display
+<div align="center">
 
-A DSH plugin that puts one small card under the sidebar and keeps it honest: the
-wallet balance of every model provider you have **enabled** in DSH, the usage of
-every Token Plan you pay for, and the quota of a few third-party coding
-channels. Providers you have not enabled never appear, and there is nothing to
-hide by hand.
+# Balance display · 余额显示
 
-> 中文说明见 [README.zh-CN.md](README.zh-CN.md)。 Release history:
-> [CHANGELOG.md](CHANGELOG.md).
+**在 DSH 侧边栏一眼看清所有已启用模型服务商的钱包余额与 Token Plan 用量。**
 
-## What the card shows
+[![dsh-plugin](https://img.shields.io/badge/dsh--plugin-topics-6366f1?style=flat-square)](https://github.com/topics/dsh-plugin)
+[![DSH](https://img.shields.io/badge/DSH-%E2%89%A5%200.2.0--rc.2-1e3a8a?style=flat-square)]()
+[![Node](https://img.shields.io/badge/Node-%E2%89%A5%2020-38bdf8?style=flat-square)]()
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
+[![Version](https://img.shields.io/badge/version-2.1.1-0b1220?style=flat-square)](CHANGELOG.md)
 
-| Section | Rows | Source |
+[简体中文](README.md) · [English](README_EN.md) · [dsh-plugin 话题](https://github.com/topics/dsh-plugin) · [更新日志](CHANGELOG.md)
+
+</div>
+
+![banner](assets/banner.svg)
+
+<div align="center">
+
+属于 **dsh-plugin** 生态 · <https://github.com/topics/dsh-plugin>
+
+</div>
+
+---
+
+## ✨ 功能特性
+
+一个卡片，三块内容，全部来自你**真正启用**的服务商：
+
+| 区块 | 行 | 数据来源 |
 | --- | --- | --- |
-| **Token Plan** | Qwen · Lite, MIMO · Lite, OpenCode · Go, Z.ai, MiniMax… | the vendor's plan API / console session |
-| **Balances** | DeepSeek, MiMo, Kimi, SiliconFlow… | each vendor's own endpoint (auth, endpoint count and units differ) |
-| **Third-party** | WorkBuddy, Trae, Qoder · LobsterAI, Qoder 中国版, TRAE, Cline, Loomy, Raccoon, MiniMax Code, ZCode, Gemini | the `dsh-connect` plugin and our Free Model's **EAC router** page, each when installed |
+| **Token Plan** | Qwen · Lite、MIMO · Lite、OpenCode · Go、Z.ai、MiniMax… | 厂商的套餐接口 / 控制台会话 |
+| **账户余额** | DeepSeek、MiMo、Kimi、SiliconFlow… | 各厂商自己的余额接口（鉴权、端点数与金额单位各不相同） |
+| **第三方渠道** | WorkBuddy、Trae、Qoder · LobsterAI、Qoder 中国版、TRAE、Cline、Loomy、Raccoon、MiniMax Code、ZCode、Gemini | 已安装的 `dsh-connect` 插件，以及 our Free Model 的 **EAC router** 页 |
 
-All three sections start folded; click a title to open just that one. The state
-is remembered per browser, and folding all three at once is allowed. The card has
-no settings gear in its header — configuration lives in **Settings → Plugins →
-Balance display**. A row missing a credential stays clickable, and an empty card
-offers a **Configure key** button, so setup is still reachable if the settings
-dialog is unavailable.
+没启用的服务商不会出现，也不需要任何手动隐藏。
 
-## One settings page, shared with dsh-model-panel
+- **今日减少** — 金额前的黄色 `-¥0.42` 是当天 0 点以来这个钱包减少的量。充值不算增加，只会重设基准，所以一次退款不会把一天的用量吃掉。
+- **颜色分级** — 人民币余额低于 `10` 变黄，低于 `1`（含负数）变红。
+- **套餐行** — 名称是「厂商 · 套餐」，黄色 `↓4%` 是当天用掉的百分比（下箭头表示消耗量），进度条是本周期用量与剩余天数。
+- **夜间折扣** — 厂商折扣时段开启时，套餐名后出现绿色 `夜间 4 折` 标签，并列出折扣覆盖的模型。Qwen 的时段与折扣每天从模型目录抓一次，MiMo 的来自公开的 Token Plan FAQ。
+- **高峰时段** — DeepSeek、MiMo 余额后的绿点 / 红点表示当前是否高峰期，悬停可看时段。
+- **EAC router 积分** — our Free Model 的 EAC router 页里每个渠道各占一行：`剩余积分 1.2K`、`剩余余额（USD） $3.50`、`剩余 Token`，或 `剩余配额` 加分桶进度条。Gemini 的配额绝不求和成余额（它的 `total` 是跨模型池的百分比相加），没配账号的渠道直接不出现，而不是显示一个 0。
+- **折叠状态按浏览器记住** — 三个区块默认全部折叠，点击标题单独展开或收起，三个同时收起也算正常状态。
+- **没有设置齿轮** — 配置入口在 **设置 → 插件 → 余额显示**；缺凭据的行仍可点击，卡片无数据时也有「配置密钥」按钮，设置对话框不可达时仍能进入配置。
 
-Both plugins read the same console cookies, so the credential page exists once.
-The host reads the local profile's `package.json` (`dependencies` and
-`dsh.profile.bundles`) to learn whether `dsh-model-panel` is actually loaded:
+## 📦 安装
 
-* **Installed and bundled** — that plugin's page is the only tab; this plugin
-  registers nothing, so two identical pages never appear side by side.
-* **Absent or not bundled** — this plugin registers the page in the same place
-  (`Settings → Plugins`) with the same content and wording, so setup works
-  either way.
+### 方式一：库管理器（推荐）
 
-The answer comes from `/dsh-balance/peers.json` (`state.json` carries a
-`sharedSetup` copy too) and is cached in `localStorage`, so it is asked once.
+1. 在 DeepSeek Harness 里打开 **库管理器** 面板。
+2. 切到 **「我的项目」** 标签页。
+3. 用 **「从账号拉取」** 填入 `https://github.com/poloniumn/dsh-balance-display`，或用 **「本地导入」** 指向你 clone 下来的目录。
+4. 把它放进 **`dsh plugin`** 文件夹。
+5. **重启 DSH** —— 宿主侧与侧栏卡片都只在启动时加载一次，重启后才生效。
 
-A few details that make the card readable at a glance:
+### 方式二：手动 clone
 
-* **Today's decrease** — a yellow `-¥0.42` before the amount is how much that
-  wallet lost since midnight. A top-up is *not* counted as an increase; it only
-  resets the anchor, so a refund never eats a day of consumption.
-* **Colour** — a CNY balance below `10` turns amber, below `1` (negatives
-  included) turns red.
-* **Plan rows** — the plan name follows the vendor (`Qwen · Lite`), the yellow
-  `↓4%` is the share of the plan used today (a downward arrow, because that
-  is what was consumed), and the bar is this period's usage
-  with the days left.
-* **Night discounts** — while a vendor's discounted window is open, a green
-  `夜间 4 折` pill appears beside the plan name, with the models the discount
-  covers. Qwen's window and rates are scraped from the model catalog once a day;
-  MiMo's from the public Token Plan FAQ.
-* **Peak hours** — the green/red dot after DeepSeek and MiMo balances means
-  off-peak / peak right now; hovering says when the next switch is.
-* **EAC router credits** — each channel of our Free Model's EAC router page gets
-  a row with what is left: `剩余积分 1.2K`, `剩余余额（USD） $3.50`, `剩余 Token`,
-  or `剩余配额` with the package bar. Gemini's quota is never summed into a
-  balance (its `total` adds percentages across model pools), and a channel
-  without configured accounts is left out instead of showing a zero.
+```bash
+git clone https://github.com/poloniumn/dsh-balance-display.git
+```
 
-## Install
-
-From this checkout:
+把克隆下来的目录放进 DSH 的 `dsh plugin` 目录，或在仓库目录内执行：
 
 ```bash
 dsh plugin install .
 ```
 
-From the published package:
+<details>
+<summary>从 npm 安装（可选）</summary>
 
 ```bash
 dsh plugin install dsh-balance-display
 ```
 
-Or, inside DSH, point the plugin manager at either
-(`plugin_manager install_bundle target=<dir or package>`). The bundle inserts
-one loader row (`dsh-balance-display`) and needs no host-side configuration:
-it reads the provider list straight from your `llm-pi-ai` profile record.
-Restart DSH after installing or upgrading — the host half and the sidebar card
-are both loaded once, at boot.
+</details>
 
-Every credential lives in the DSH credential store
-(`~/.dsh/.credentials.yaml`) — never in the plugin config, the log, or
-`localStorage`.
+bundle 只会插入一行加载项（`dsh-balance-display`），宿主侧无需额外配置：服务商列表直接读你 `llm-pi-ai` 配置里的 `providers`。
 
-## Set up the credentials
+所有凭据都放在 DSH 凭据库（`~/.dsh/.credentials.yaml`），不会写进插件配置、日志或 `localStorage`。
 
-Rows with no credential show `未配置密钥` / `--`. Click such a row and DSH
-opens **Settings → Plugins → Balance display**; paste the value there
-and press **保存并测试**. The value is validated against the vendor *before* it
-is stored, so a wrong paste fails immediately instead of showing an empty row
-later.
+## 🚀 使用方法
 
-The setup page is a whole tab, not a dialog. Every credential the plugin knows
-about gets its own card, grouped by kind (Token Plan cookies first, then the
-wallets), and each card carries the masked value, the vendor console link, the
-balance or plan usage it just read, and one paste box. A Cookie-Editor JSON
-export, a Netscape `cookies.txt`, and the raw `Cookie:` header all work, and a
-file can be dropped onto the box instead of pasted. Nothing is stored until the
-value passes the vendor check, so a wrong paste fails on the spot.
+装好并重启后，侧边栏下方出现卡片：
 
-| Credential | Where to get it |
+1. 点 **Token Plan** / **账户余额** / **第三方渠道** 的标题，展开对应区块。
+2. 缺凭据的行显示「未配置密钥 / --」，点它直接跳到设置页对应卡片，粘贴后点 **保存并测试**。值会**先校验再保存**，粘错了当场报错，而不是之后显示一行空数据。
+3. 卡片每分钟刷新一次；上游失败时保留上一份快照，不会闪成空白。
+
+## ⚙️ 配置说明
+
+### 与 dsh-model-panel 共用同一个设置页
+
+两个插件读的是同一批控制台 Cookie，所以配置页只有一份。宿主侧读本机 profile 的 `package.json`（`dependencies` 与 `dsh.profile.bundles`）判断 `dsh-model-panel` 是否真的在加载：
+
+- **装了并且已加载** → 那个插件注册的设置页就是唯一入口，本插件不再注册第二个标签页，避免出现两个一模一样的「Cookie 用量」页。
+- **没装 / 装了没启用** → 本插件自己注册同一位置（`设置 → 插件`）的页面，内容与文案和那边一致，照样能用。
+
+判断结果从 `/dsh-balance/peers.json` 拿到（`state.json` 里也带一份 `sharedSetup`），缓存进 `localStorage`，所以只在首次启动问一次。
+
+### 凭据对照表
+
+设置页是一整页标签，不是弹窗：插件认识的每一份凭据各占一张卡片，按类型分组（Token Plan 的 Cookie 在前，钱包类在后）。卡片上给出掩码值、厂商控制台链接、刚读到的余额或套餐用量，以及一个粘贴框——Cookie-Editor 的 JSON 导出、Netscape 的 `cookies.txt`、或整行 `Cookie:` 头都能直接用，也可以把文件直接拖进框里。
+
+| 凭据 | 获取位置 |
 | --- | --- |
 | `DEEPSEEK_API_KEY` | <https://platform.deepseek.com/api_keys> |
-| `QWEN_TOKEN_PLAN_COOKIE` | see below — a console cookie, not a key |
+| `QWEN_TOKEN_PLAN_COOKIE` | 见下方「阿里 Cookie」，这项是 Cookie 不是密钥 |
 | `XIAOMI_API_KEY` | <https://platform.xiaomimimo.com/console/api-keys> |
 | `XIAOMI_TOKEN_PLAN_CN_API_KEY` | <https://platform.xiaomimimo.com/console/plan-manage> |
-| `OPENCODE_GO_API_KEY` (or `OPENCODE_API_KEY`) | <https://opencode.ai/console/workspace> |
-| `ZAI_CODING_CN_API_KEY` / `ZAI_CODING_API_KEY` | Z.ai China / International — **different auth modes** |
+| `OPENCODE_GO_API_KEY` | <https://opencode.ai/console/workspace>（找不到时自动回退 `OPENCODE_API_KEY`） |
+| `ZAI_CODING_CN_API_KEY` / `ZAI_CODING_API_KEY` | Z.ai 中国站 / 国际站（**两个站鉴权方式不同**） |
 | `OPENROUTER_API_KEY` | <https://openrouter.ai/settings/keys> |
-| `SILICONFLOW_API_KEY`, `NOVITA_API_KEY`, `HYPERBOLIC_API_KEY`, `DEEPINFRA_API_KEY`, `AI_GATEWAY_API_KEY` | each vendor's API keys page |
-| `NANOGPT_API_KEY`, `SYNTHETIC_API_KEY`, `CHUTES_API_KEY`, `OLLAMA_API_KEY`, `APIGOTO_API_KEY` | each vendor's API keys page |
-| `MINIMAX_CN_API_KEY` / `MINIMAX_API_KEY` | MiniMax China / International |
-| `ZENMUX_MANAGEMENT_API_KEY` | ZenMux **Management** key (an inference key cannot read quota) |
+| `SILICONFLOW_API_KEY`、`NOVITA_API_KEY`、`HYPERBOLIC_API_KEY`、`DEEPINFRA_API_KEY`、`AI_GATEWAY_API_KEY` | 各平台 API Keys |
+| `NANOGPT_API_KEY`、`SYNTHETIC_API_KEY`、`CHUTES_API_KEY`、`OLLAMA_API_KEY`、`APIGOTO_API_KEY` | 各平台 API Keys |
+| `MINIMAX_CN_API_KEY` / `MINIMAX_API_KEY` | MiniMax 中国站 / 国际站 |
+| `ZENMUX_MANAGEMENT_API_KEY` | ZenMux **Management** Key（推理 Key 查不到额度） |
 
-Kimi / Moonshot (`KIMI_API_KEY`, `MOONSHOT_API_KEY`) reuse the key already
-held by the DSH model router, so they have no row on this setup page.
+Kimi / Moonshot（`KIMI_API_KEY`、`MOONSHOT_API_KEY`）直接复用 DSH 模型路由里已有的密钥，因此设置页没有对应表单，需要在模型服务商配置里填写。
 
-### The Alibaba (Qwen Token Plan) cookie
+### 阿里（Qwen Token Plan）Cookie
 
-Qwen has no API for plan usage: the numbers only exist behind the
-`platform.qianwenai.com` console session. So the plugin stores your console
-`Cookie` header.
+Qwen 没有查询套餐用量的接口，数字只在 `platform.qianwenai.com` 控制台会话后面，所以插件保存的是控制台的 `Cookie` 请求头。
 
-1. Sign in at <https://platform.qianwenai.com/home/billing/subscription/token-plan>.
-2. DevTools → **Network** → pick any request to `platform.qianwenai.com`.
-3. Copy the whole `Cookie` request header.
-4. DSH → Settings → Plugins → Balance display → **Qwen Token Plan console
-   cookie** → paste → **保存并测试**.
+1. 登录 <https://platform.qianwenai.com/home/billing/subscription/token-plan>。
+2. 打开开发者工具 → **网络** → 任选一个发往 `platform.qianwenai.com` 的请求。
+3. 复制整行 `Cookie` 请求头。
+4. DSH → 设置 → 插件 → 余额显示 → 「Qwen Token Plan console cookie」→ 粘贴 → 保存并测试。
 
-The cookie lasts about a week. When the row says `登录已过期`, copy a fresh one.
-
-Prefer a terminal? The same thing without the UI:
+Cookie 大约 7 天过期，看到「登录已过期」时重新复制一次即可。想用终端也可以：
 
 ```bash
-npx dsh-balance-qwen-cookie --paste     # hidden prompt, validates before writing
-npx dsh-balance-qwen-cookie --from-copy # straight from the clipboard
-npx dsh-balance-qwen-cookie --check     # what is stored, and is it still valid
+npx dsh-balance-qwen-cookie --paste      # 隐藏输入，先校验再写入
+npx dsh-balance-qwen-cookie --from-copy  # 直接从剪贴板读取
+npx dsh-balance-qwen-cookie --check      # 查看已存的凭据是否还有效
 npx dsh-balance-qwen-cookie --remove
 ```
 
-## Which providers appear
+### 哪些服务商会出现
 
-Only what your DSH profile actually enables. The plugin reads the `providers`
-record of the `llm-pi-ai` config entry (and its inherited/override layers) and
-keeps the entries that are not `disabled`. The DSH login itself supplies
-`deepseek-account`; the `dsh-connect` plugin supplies the third-party rows when
-it is installed, and our Free Model supplies the credits of its **EAC router**
-channels when it is installed.
+只看你 DSH 配置里真正启用的：插件读取 `llm-pi-ai` 配置项的 `providers`（含 inherited / override 层），保留没有 `disabled` 的条目。DSH 登录本身提供 `deepseek-account`；装了 `dsh-connect` 时才会有第三方渠道行，装了 our Free Model 时才会有它 EAC router 各渠道的积分行。
 
-Provider ids map to adapters in [lib/registry.js](lib/registry.js); a provider
-without an adapter still appears as a plain console link. To add a vendor, see
-[docs/adding-a-provider.md](docs/adding-a-provider.md) — it is one small file.
+服务商 id 到适配器的映射在 [`lib/registry.js`](lib/registry.js)；没有适配器的服务商仍然会以一个控制台链接出现。要加一家厂商，看 [docs/adding-a-provider.zh-CN.md](docs/adding-a-provider.zh-CN.md)，基本是写一个小文件。
 
-## How the numbers are fetched
+### 取数方式
 
-`GET + Authorization: Bearer` does not describe every vendor. The shared
-request layer in [lib/upstream.js](lib/upstream.js) now owns the wire protocol,
-and adapters in [lib/providers/vendors.js](lib/providers/vendors.js) declare
-only endpoints, an auth mode and a pure `parse` function. The vendor contracts
-were derived from `dsh-subusage` 0.24.5 (MIT; see [NOTICE](NOTICE)), whose
-adapters were checked against live accounts:
+厂商接口契约取自 [dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage)（KouzakiUmi，MIT，归属声明见 [NOTICE](NOTICE)）。
 
-* **Bare `Authorization`** (no `Bearer`) — Z.ai International, Ollama Cloud.
-* **`x-api-key` + `POST {}`** — the NanoGPT balance endpoint, which also uses a
-  different host for management keys.
-* **Cookie sessions** — Qwen / MiMo consoles, with Origin/Referer headers.
-* **Two endpoints with silent degradation** — OpenRouter (`/key` works with any
-  key; `/credits` is management-only and 403s), ZenMux, Kimi, NanoGPT. A
-  secondary failure drops only the secondary information, never the row.
-* **Business errors inside HTTP 200** — MiniMax `base_resp.status_code`.
-* **Per-vendor units** — Novita is 1/10000 USD, Hyperbolic is cents, DeepInfra
-  is a *negative* balance, Vercel is a decimal string.
-* **Two names for one credential** — OpenCode Go accepts `OPENCODE_GO_API_KEY`
-  and falls back to `OPENCODE_API_KEY`, tried one at a time.
+一条 `GET + Authorization: Bearer` 走不通所有厂商。宿主侧的 [`lib/upstream.js`](lib/upstream.js) 统一负责请求，适配器只声明端点、鉴权模式和纯解析函数（[`lib/providers/vendors.js`](lib/providers/vendors.js)）：
 
-Calls through that shared layer get a 10 s timeout, `redirect: 'manual'`, a 1 MiB
-response cap; 3xx is not an auth failure, 401/403 → `expired`, 408/429/5xx are
-retryable, and a non-JSON response is treated as a stale session. The generic
-`getJson` helper still used by a few hand-written adapters has an 8 s timeout.
-`kimi-coding` probes the subscription endpoint first (4 s timeout) and falls
-back to the Moonshot wallet, so a key from either platform produces a row.
-Z.ai and OpenRouter, which used to be console links only, now read real quota
-and balance data.
+| 形态 | 例子 | 处理 |
+| --- | --- | --- |
+| 裸 `Authorization` | Z.ai 国际站、Ollama Cloud | `auth: 'raw'`，不加 `Bearer` |
+| `x-api-key` + POST | NanoGPT 余额 | 独立端点 `POST {}`，与管理版 Key 的另一套 host 配套 |
+| Cookie 会话 | Qwen、MiMo 控制台 | `auth: 'cookie'` 加 Origin / Referer |
+| 双端点、部分失败降级 | OpenRouter、ZenMux、Kimi、NanoGPT | 主端点必需，次端点 `optional: true`；次端点 403 只丢次要信息，整行不失败 |
+| 200 里藏业务错误码 | MiniMax `base_resp.status_code` | `check()` 映射成 `expired` / `error` |
+| 金额单位各异 | Novita 1/10000 USD、Hyperbolic 美分、DeepInfra 负余额、Vercel 十进制串 | 各家 `parse()` 显式换算，不做通用折算 |
+| 同一把 Key 两种引用名 | OpenCode Go | `secret.aliases` 逐个尝试，不跨来源拼接 |
 
-The EAC router channels are a different animal: our Free Model exposes no HTTP
-route for them at all, so [lib/ofm-credits.js](lib/ofm-credits.js) calls the
-same `usage.badge` method it calls itself — through the host's in-process
-Connection (`createPeer` + `createSharedFetchHandler('/api')`), because a bare
-loopback `fetch` to `/api/*` carries no session and is refused by the gateway.
-`usage.badge` is preferred over `credits.balances` because it is cached by the
-host and only covers enabled accounts, so the card's minute-long poll does not
-multiply upstream requests.
+统一护栏（走 `lib/upstream.js` 的请求）：10 秒超时、`redirect: 'manual'`、1 MiB 响应上限；3xx 不误判成凭据过期，401/403 → `expired`，408/429/5xx 标记可重试，非 JSON 响应视为会话失效。少数手写适配器仍用通用 `getJson`，超时为 8 秒。
 
-Vendors that need a local OAuth file, a QR login or IAM request signing (Grok,
-Codex, GitHub Copilot, Volcengine, Command Code) are intentionally not ported:
-they depend on the host's login / credential-record services.
+`kimi-coding` 先试订阅额度接口（4 秒超时），失败自动回落到 Moonshot 钱包，因此订阅 Key 和开放平台 Key 都能出数。
 
-## Privacy and network calls
+EAC router 的渠道是另一种形态：our Free Model 根本没给渠道积分开 HTTP 路由，所以 [`lib/ofm-credits.js`](lib/ofm-credits.js) 走它自己也在用的 `usage.badge`——通过宿主的进程内 Connection（`createPeer` + `createSharedFetchHandler('/api')`），因为裸的回环 `fetch` 打 `/api/*` 不带会话，会被网关直接拒绝。选 `usage.badge` 而不是 `credits.balances`，是因为前者有宿主缓存、只含启用账号，卡片的分钟级轮询不会把上游请求数放大。
 
-* The host sends a credential only to the URL its adapter declares, always with
-  a timeout, never to a URL that came from the browser.
-* The state endpoint is fenced to the DSH window: loopback host, loopback (or
-  absent) origin, no cross-site `Sec-Fetch-Site`, plus the host's own
-  `connection.requestRejection`.
-* The write endpoint (`POST /dsh-balance/secret`) accepts one value, validates
-  it, and stores it in the DSH credential store. It never returns a secret — the
-  setup page only ever sees a mask such as `oc_…9F (41)`.
-* Nothing is fetched from a third party to make the card work except: the vendor
-  APIs you configured, two public documentation pages (DeepSeek pricing, MiMo
-  plan FAQ) once a day, the Qwen model catalog once a day at the discount
-  window's start, `dsh-connect` on loopback, and our Free Model's own
-  `/api/channel-pack` through the host's in-process Connection (never over the
-  network, and only the `usage.badge` read it already caches).
+仍**未**移植的是依赖本机 OAuth 登录文件、扫码或 IAM 签名的几家（Grok、Codex、GitHub Copilot、火山方舟、Command Code）——它们要用到宿主的登录与凭据记录服务，不是一次 HTTP 请求能解决的。
 
-## Data files
+### 隐私与网络请求
 
-Caches live in `<DSH_HOME>/dsh-balance-display/` (by default `~/.dsh/…`):
+- 凭据只会发往该厂商适配器声明的地址，带超时，永远不会发往浏览器传来的 URL。
+- 状态接口仅限 DSH 窗口访问：loopback host、loopback（或缺失）origin、非跨站 `Sec-Fetch-Site`，并叠加宿主自己的 `connection.requestRejection`。
+- 写入接口（`POST /dsh-balance/secret`）只接收一个值，校验后写入 DSH 凭据库；从不返回明文，配置页只能看到 `oc_…9F (41)` 这样的掩码。
+- 除你配置的厂商接口外，插件只会访问：两个公开文档页（DeepSeek 定价、MiMo 套餐 FAQ，每天一次）、Qwen 模型目录（每天一次，在折扣时段开始时）、本机的 `dsh-connect`，以及 our Free Model 自己的 `/api/channel-pack`（走宿主进程内 Connection，不经过网络，且只读它已经在缓存的 `usage.badge`）。
 
-| File | Content |
+### 数据文件
+
+缓存位于 `<DSH_HOME>/dsh-balance-display/`（默认 `~/.dsh/…`）：
+
+| 文件 | 内容 |
 | --- | --- |
-| `baseline.json` | today's anchor per row, used for the yellow "today" numbers |
-| `schedules.json` | peak / night windows scraped from the public pages |
-| `qwen-discount.json` | the Qwen discount badges and when they were read |
+| `baseline.json` | 每行的当日基准，用于计算「今日减少」 |
+| `schedules.json` | 从公开页面抓取的高峰 / 夜间时段 |
+| `qwen-discount.json` | Qwen 折扣标签及其读取时间 |
+| `last-state.json` | 上一次真正拿到数据的快照：凭据库还没就绪时用它顶上，不会写坏缓存 |
 
-Delete the directory to start from scratch; the card rebuilds it.
+删掉这个目录即恢复初始状态。
 
-## Development
+## 🖼 成果展示
+
+<!-- 截图区：把 png/jpg 放进本仓库的 images/ 目录，然后按下面的网格排布 -->
+
+> **截图收集中。** 当前仓库还没有附带截图。把截图放进本仓库的 `images/` 目录（或者放进发布工作区后让我来布局），再用下面这段网格替换本段说明即可——两列自适应，深色背景下的卡片截图看起来最干净。
+
+<!--
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="images/sidebar-card.png" alt="侧边栏余额卡片" width="420"><br>
+      <sub><b>侧边栏卡片</b> · Token Plan、余额、第三方渠道三区块</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="images/settings-page.png" alt="设置页" width="420"><br>
+      <sub><b>设置 → 插件 → 余额显示</b> · 每份凭据一张卡片，粘贴即校验</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="images/plan-rows.png" alt="套餐行" width="420"><br>
+      <sub><b>套餐行</b> · 夜间折扣标签与当日用量百分比</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="images/badges.png" alt="今日减少与颜色分级" width="420"><br>
+      <sub><b>今日减少</b> · 黄色 <code>-¥0.42</code> 与低余额变色</sub>
+    </td>
+  </tr>
+</table>
+-->
+
+## 🧪 开发
 
 ```bash
-npm test    # node --test, no dependencies
+npm test    # node --test，无依赖
 ```
 
-Layout:
+目录结构：
 
 ```
-index.js              host half: assembles the pieces below, exports four routes
-client.js             sidebar card: sections, shared settings tab
-lib/providers/*.js    one file per vendor adapter
-lib/registry.js       the adapter list
-lib/rows.js           one provider -> one row (credential probe, extras, meta)
-lib/collect.js        the enabled-provider scan and the whole state payload
-lib/snapshot.js       answer cache, stale-while-revalidate, on-disk seed
-lib/routes.js         the loopback fence and the three JSON handlers
-lib/cookie-setup.js   the credential page, host half (paste, import, validate)
-lib/cookie-import.js  Cookie-Editor / Netscape / header parsing
-lib/peers.js          is dsh-model-panel loaded, i.e. who owns the settings tab
-lib/secrets.js        credential store wrapper (read / write / clear / mask)
-lib/baseline.js       today's decrease accumulator
-lib/schedules.js      daily scrape of the public pricing pages
-lib/qwen-discount.js  Qwen night-discount cache
-lib/third-party.js    dsh-connect channel reader
-lib/ofm-credits.js    our Free Model EAC router credit reader
-lib/http.js           loopback fence + tiny JSON helpers
-tools/                the cookie CLI
+index.js            宿主侧入口（Cordis 插件，提供 /dsh-balance/*）
+client.js           浏览器侧卡片（注册到 sidebar.footer.action）
+lib/                取数、路由、快照、凭据、调度
+lib/providers/      每家厂商一个适配器
+tools/              qwen-cookie 命令行与测试运行器
+docs/               新增服务商指南（中 / 英）
+cordis.patch.yml    bundle 加载行
+assets/banner.svg   README 横幅
+images/             README 截图
 ```
 
-## Credits
+## 致谢
 
-The balance/usage pipeline (rows, collection, snapshot, routes) is shared with
-[dsh-model-panel](https://github.com/poloniumn/dsh-model-panel) — same author,
-no attribution needed.
+余额与用量的取数管线（rows / collect / snapshot / routes）与 [dsh-model-panel](https://github.com/poloniumn/dsh-model-panel) 共用，同为本人作品，无需署名。
 
-The *vendor API contracts* underneath it (endpoint URLs, auth modes, response
-field names, unit conversions) originate in
-[dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage) by KouzakiUmi,
-MIT. They reached this plugin through `dsh-model-panel`, which is a relay, not
-the origin. MIT requires the copyright and permission notice to travel with any
-copy of those contracts, so [NOTICE](NOTICE) stays: it is a licence condition,
-not a courtesy line.
+真正的上游是其中那一层**厂商接口契约**（端点地址、鉴权方式、响应字段名、单位换算），源自 [dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage)（KouzakiUmi，MIT），是经 `dsh-model-panel` 转述进本项目的——它只是转述者、不是原始出处。MIT 要求版权与许可声明随这些契约的副本一起传递，所以 [NOTICE](NOTICE) 必须保留：这是许可条件，不是客套。
 
-## License
+## 📄 许可证
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE) © 2026 poloniumn
+
+<div align="center">
+
+[⬆ 回到顶部](#balance-display--余额显示) · [dsh-plugin 话题](https://github.com/topics/dsh-plugin)
+
+</div>

@@ -24,3 +24,11 @@ node_modules/
 coverage/
 .idea/
 .vscode/
+
+# Publish tooling (never commit the GitHub token or its folder)
+.publish-secrets/
+.publish-secrets
+token.txt
+*.token
+repo/
+_publish/

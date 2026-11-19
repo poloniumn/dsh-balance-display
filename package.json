@@ -7,7 +7,7 @@
   "author": "dsh-balance-display contributors",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/poloniumn/dsh-balance-display.git"
+    "url": "https://github.com/poloniumn/dsh-balance-display.git"
   },
   "homepage": "https://github.com/poloniumn/dsh-balance-display#readme",
   "bugs": {
@@ -44,10 +44,12 @@
     "tools/*.mjs",
     "tools/lib/*.mjs",
     "README.md",
-    "README.zh-CN.md",
+    "README_EN.md",
     "CHANGELOG.md",
     "LICENSE",
     "NOTICE",
+    "assets/banner.svg",
+    "images/*",
     "docs/*.md"
   ],
   "scripts": {

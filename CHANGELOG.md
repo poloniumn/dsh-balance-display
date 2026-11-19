@@ -4,21 +4,20 @@
 
 ### Fixed
 
-- The fold caret in a section header is a down triangle again: folded sections
-  point down (clicking opens them downwards), open ones are turned over so they
-  point back up. It used to sit on its side when folded (`rotate(-90deg)`).
-- The plan row's today badge reads `↓4%` instead of `↑4%`: today's consumption
-  goes down the quota, and a down arrow says that without implying a rise.
+- The fold marker on a section header points **down** while collapsed and turns
+  over to point up when the section opens; it used to be rotated to the side.
+- Today's usage badge reads `↓4%` instead of `↑4%`: the number is how much of the
+  plan was consumed today, so an up arrow read as "the quota went up".
 
 ### Changed
 
-- The credits section now says what actually happened: the balance/usage
-  pipeline is shared with `dsh-model-panel` (same author, no attribution
-  needed), while the vendor API contracts underneath come from `dsh-subusage`
-  0.24.5 through that plugin. `NOTICE` stays because the MIT licence requires
-  the notice to travel with those contracts — it is a condition, not a courtesy.
+- Credits in both READMEs name the real chain: the collection pipeline is shared
+  with `dsh-model-panel` (same author, no attribution needed), while the vendor
+  API contracts come from `dsh-subusage` 0.24.5, which `dsh-model-panel` only
+  relays. `NOTICE` is a licence condition, not a courtesy line.
 
 ## 2.1.0
+
 
 The host half is now seven small modules instead of one 495-line file, and the
 balance/usage pipeline is the same one `dsh-model-panel` runs.
