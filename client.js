@@ -620,7 +620,7 @@ window.__ModuleLoader__.load({
       const { row, t, now } = props
       const nameText = row.plan ? `${row.label} · ${row.plan}` : row.label
       const usedToday = Number.isFinite(row.todayUsedPct) && row.todayUsedPct > 0
-        ? h('span', { style: S.deltaPct, title: `${t('row.todayPlan')} ${row.todayUsedPct}%` }, `↑${row.todayUsedPct}%`)
+        ? h('span', { style: S.deltaPct, title: `${t('row.todayPlan')} ${row.todayUsedPct}%` }, `↓${row.todayUsedPct}%`)
         : null
 
       const children = [
@@ -783,7 +783,11 @@ window.__ModuleLoader__.load({
     }
 
     // ---------- collapsible box ----------
-    /** Click the header (or the chevron) to fold a section away. */
+    /**
+     * Click the header (or the chevron) to fold a section away. The glyph is
+     * always a down triangle: folded sections point down (they open downwards),
+     * open ones are turned over so they point back up (they fold away).
+     */
     function Section(props) {
       const { id, title, collapsed, onToggle, right, t, children } = props
       const hint = collapsed ? t('card.expandTitle') : t('card.collapseTitle')
@@ -797,7 +801,7 @@ window.__ModuleLoader__.load({
             'aria-controls': `dsh-balance-${id}`,
             title: hint,
           },
-            h('span', { style: { ...S.chevron, transform: collapsed ? 'rotate(-90deg)' : 'none' } }, '▾'),
+            h('span', { style: { ...S.chevron, transform: collapsed ? 'none' : 'rotate(180deg)' } }, '▾'),
             h('span', { style: S.title }, title)),
           right || null),
         collapsed ? null : h('div', { id: `dsh-balance-${id}`, style: S.body }, children))

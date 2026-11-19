@@ -47,7 +47,8 @@ A few details that make the card readable at a glance:
 * **Colour** — a CNY balance below `10` turns amber, below `1` (negatives
   included) turns red.
 * **Plan rows** — the plan name follows the vendor (`Qwen · Lite`), the yellow
-  `↑4%` is the share of the plan used today, and the bar is this period's usage
+  `↓4%` is the share of the plan used today (a downward arrow, because that
+  is what was consumed), and the bar is this period's usage
   with the days left.
 * **Night discounts** — while a vendor's discounted window is open, a green
   `夜间 4 折` pill appears beside the plan name, with the models the discount
@@ -260,9 +261,17 @@ tools/                the cookie CLI
 
 ## Credits
 
-The vendor API contracts were derived from
-[dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage) by
-KouzakiUmi (MIT). The required attribution is kept in [NOTICE](NOTICE).
+The balance/usage pipeline (rows, collection, snapshot, routes) is shared with
+[dsh-model-panel](https://github.com/poloniumn/dsh-model-panel) — same author,
+no attribution needed.
+
+The *vendor API contracts* underneath it (endpoint URLs, auth modes, response
+field names, unit conversions) originate in
+[dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage) by KouzakiUmi,
+MIT. They reached this plugin through `dsh-model-panel`, which is a relay, not
+the origin. MIT requires the copyright and permission notice to travel with any
+copy of those contracts, so [NOTICE](NOTICE) stays: it is a licence condition,
+not a courtesy line.
 
 ## License
 

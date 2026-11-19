@@ -35,7 +35,7 @@ Token Plan 用量，以及第三方编程渠道的额度。没启用的服务商
 * **今日减少** — 金额前的黄色 `-¥0.42` 是当天 0 点以来这个钱包减少的量。充值
   不算增加，只会重设基准，所以一次退款不会把一天的用量吃掉。
 * **颜色** — 人民币余额低于 `10` 变黄，低于 `1`（含负数）变红。
-* **套餐行** — 名称是「厂商 · 套餐」，黄色 `↑4%` 是当天用掉的百分比，进度条是本
+* **套餐行** — 名称是「厂商 · 套餐」，黄色 `↓4%` 是当天用掉的百分比（下箭头表示消耗量），进度条是本
   周期用量与剩余天数。
 * **夜间折扣** — 厂商折扣时段开启时，套餐名后出现绿色 `夜间 4 折` 标签，并列出折
   扣覆盖的模型。Qwen 的时段与折扣每天从模型目录抓一次，MiMo 的来自公开的 Token
@@ -204,8 +204,15 @@ npm test    # node --test，无依赖
 
 ## 致谢
 
-厂商接口契约参考自 [dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage)
-（KouzakiUmi，MIT），所需归属声明保留在 [NOTICE](NOTICE)。
+余额与用量的取数管线（rows / collect / snapshot / routes）与
+[dsh-model-panel](https://github.com/poloniumn/dsh-model-panel) 共用，同为本人作品，
+无需署名。
+
+真正的上游是其中那一层**厂商接口契约**（端点地址、鉴权方式、响应字段名、单位换算），
+它源自 [dsh-subusage 0.24.5](https://github.com/KouzakiUmi/dsh-subusage)
+（KouzakiUmi，MIT）。这些契约是经 `dsh-model-panel` 转述进本项目的，而
+`dsh-model-panel` 只是转述者、不是原始出处：MIT 要求版权声明与许可声明随这些契约
+的任何副本一起传递，所以 [NOTICE](NOTICE) 必须保留——它是许可条件，不是客套。
 
 ## 许可
 

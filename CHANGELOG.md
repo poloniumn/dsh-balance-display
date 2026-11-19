@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.1
+
+### Fixed
+
+- The fold caret in a section header is a down triangle again: folded sections
+  point down (clicking opens them downwards), open ones are turned over so they
+  point back up. It used to sit on its side when folded (`rotate(-90deg)`).
+- The plan row's today badge reads `↓4%` instead of `↑4%`: today's consumption
+  goes down the quota, and a down arrow says that without implying a rise.
+
+### Changed
+
+- The credits section now says what actually happened: the balance/usage
+  pipeline is shared with `dsh-model-panel` (same author, no attribution
+  needed), while the vendor API contracts underneath come from `dsh-subusage`
+  0.24.5 through that plugin. `NOTICE` stays because the MIT licence requires
+  the notice to travel with those contracts — it is a condition, not a courtesy.
+
 ## 2.1.0
 
 The host half is now seven small modules instead of one 495-line file, and the
